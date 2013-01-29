@@ -2300,6 +2300,7 @@
         <id>447</id>
         <ro>d.m.Y</ro>
         <sl>d.m.Y</sl>
+        <ru>d-m-Y</ru>
     </text>
     <text>
         <en>Y-m-d H:i</en>
@@ -2307,6 +2308,7 @@
         <id>448</id>
         <ro>d.m.Y H:i</ro>
         <sl>d.m.Y H:i</sl>
+        <ru>d-m-Y H:i</ru>
     </text>
     <text>
         <en>no selection</en>
@@ -9819,19 +9821,19 @@
         <id>1931</id>
     </text>
     <text>
-        <en></en>
-        <ru></ru>
-        <id>19</id>
+        <en>Group type</en>
+        <ru>Тип экипажа</ru>
+        <id>1932</id>
     </text>
     <text>
-        <en></en>
-        <ru></ru>
-        <id>19</id>
+        <en>Responsibles</en>
+        <ru>Ответственные</ru>
+        <id>1933</id>
     </text>
     <text>
-        <en></en>
-        <ru></ru>
-        <id>19</id>
+        <en>Accesses</en>
+        <ru>Допуски</ru>
+        <id>1934</id>
     </text>
     <text>
         <en></en>
