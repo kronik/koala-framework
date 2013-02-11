@@ -54,7 +54,7 @@ class Kwc_Chained_Trl_GeneratorEvents_Table extends Kwc_Chained_Trl_GeneratorEve
 
         if (isset($dc['visible'])) {
             if ($event->row->visible) {
-                foreach (Kwf_Component_Data_Root::getInstance()->getComponentsByDbId($dbId) as $c) {
+                foreach (Kwf_Component_Data_Root::getInstance()->getComponentsByDbId($dbId, array('ignoreVisible'=>true)) as $c) {
                     if ($c->generator === $this->_getGenerator()) {
                         $this->_fireComponentEvent('Added', $c, Kwf_Component_Event_Component_AbstractFlag::FLAG_VISIBILITY_CHANGED);
                     }
@@ -185,7 +185,8 @@ class Kwc_Chained_Trl_GeneratorEvents_Table extends Kwc_Chained_Trl_GeneratorEve
             $chained = Kwc_Chained_Abstract_Component::getAllChainedByMaster($c, $chainedType, $select);
             foreach ($chained as $i) {
                 if ($i->generator !== $this->_getGenerator()) {
-                    throw new Kwf_Exception("Got chained component with other generator");
+                    //can happen if two components use same model
+                    continue;
                 }
             }
             $ret = array_merge($ret, $chained);
