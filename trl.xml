@@ -1156,6 +1156,7 @@
         <id>264</id>
         <ro>Latitudine</ro>
         <sl>Geografska širina</sl>
+        <ru>Широта</ru>
     </text>
     <text>
         <en>Longitude</en>
@@ -1163,6 +1164,7 @@
         <id>265</id>
         <ro>Longitudine</ro>
         <sl>Geografska dolžina</sl>
+        <ru>Долгота</ru>
     </text>
     <text>
         <en>Insert new image or edit selected image.</en>
@@ -2784,6 +2786,7 @@
         <id>565</id>
         <ro>Link de activare</ro>
         <sl>Aktivacijska povezava</sl>
+        <ru>Ссылка активации</ru>
     </text>
     <text>
         <en>Additional rights</en>
@@ -2941,6 +2944,7 @@
         <id>602</id>
         <ro>Este deja activat</ro>
         <sl>Že aktivirano</sl>
+        <ru>Уже активировано</ru>
     </text>
     <text>
         <en>Activate / Login</en>
@@ -2948,6 +2952,7 @@
         <id>604</id>
         <ro>Activare/Logare</ro>
         <sl>Aktiviranje/prijava</sl>
+        <ru>Активировать / Войти</ru>
     </text>
     <text>
         <en>Passwords not equal</en>
@@ -2955,6 +2960,7 @@
         <id>605</id>
         <ro>Parolele sunt diferite</ro>
         <sl>Gesli se ne ujemata.</sl>
+        <ru>Пароли не совпадают</ru>
     </text>
     <text>
         <en>Activation link sent to email address.</en>
@@ -2962,6 +2968,7 @@
         <id>607</id>
         <ro>Link-ul de activare a fost trimis la adresa de e-mail.</ro>
         <sl>Aktivacijska povezava je bila poslana na e-naslov.</sl>
+        <ru>Ссылка на активацию выслана на электронную почту</ru>
     </text>
     <text>
         <en>Error sending the mail.</en>
@@ -2969,6 +2976,7 @@
         <id>608</id>
         <ro>Eroare la trimiterea e-mail-ului.</ro>
         <sl>Napaka pri pošiljanju e-sporočila.</sl>
+        <ru>Ошибка отправки сообщения.</ru>
     </text>
     <text>
         <en>Open in</en>
@@ -3449,6 +3457,7 @@
         <id>708</id>
         <ro>Drepturi</ro>
         <sl>Pravice</sl>
+        <ru>Права доступа</ru>
     </text>
     <text>
         <en>Please fill out the field</en>
@@ -4413,6 +4422,7 @@
         <id>888</id>
         <ro>Status</ro>
         <sl>Status</sl>
+        <ru>Состояние</ru>
     </text>
     <text>
         <en>Fax</en>
@@ -4917,6 +4927,7 @@
         <id>988</id>
         <ro>Exclusiv pentru acest web</ro>
         <sl>Samo za ta spletni naslov</sl>
+        <ru>Только тут</ru>
     </text>
     <text>
         <de>Wenn diese Box aktiv ist kann der Benutzer nur für dieses Web verwendet werden. Wenn Sie den selben Benutzer in einem anderen Web verwenden möchten, dann muss diese Box leer bleiben.</de>
@@ -5036,6 +5047,7 @@
         <id>1008</id>
         <de>E-Mail</de>
         <ro>E-mail</ro>
+        <ru>Электронная почта</ru>
     </text>
     <text>
         <en>Commercial register number</en>
@@ -5391,6 +5403,7 @@
         <id>1079</id>
         <de>Letzter Login</de>
         <ro>Ultimul Login</ro>
+        <ru>Последний вход</ru>
     </text>
     <text>
         <en>Superuser</en>
@@ -6899,6 +6912,7 @@
         <id>1346</id>
         <ro>Nu trimiteţi e-mail-uri în timpul procesului de salvare.</ro>
         <sl>Med shranjevanjem ne pošiljajte e-sporočil.</sl>
+        <ru>Не отправлять письма во время сохранения</ru>
     </text>
     <text>
         <en>Log</en>
@@ -7090,6 +7104,7 @@
         <id>1373</id>
         <ro>La autentificare a fost utilizată o parolă greşită.</ro>
         <sl>Pri prijavi je bilo uporabljeno napačno geslo.</sl>
+        <ru>Был использован неверный логин или пароль</ru>
     </text>
     <text>
         <en>Wrong login password used by {0}.</en>
@@ -7368,6 +7383,7 @@
         <id>1431</id>
         <ro>Retrimite un e-mail</ro>
         <sl>Ponovno pošlji e-sporočilo.</sl>
+        <ru>Повторить отправку сообщения</ru>
     </text>
     <text>
         <en>All</en>
@@ -9836,19 +9852,104 @@
         <id>1934</id>
     </text>
     <text>
-        <en></en>
-        <ru></ru>
-        <id>19</id>
+        <en>Request #</en>
+        <ru>Номер заявки</ru>
+        <id>1935</id>
+    </text>
+    <text>
+        <en>Onboard positions</en>
+        <ru>Позиции на борту</ru>
+        <id>1936</id>
+    </text>
+    <text>
+        <en>Onboard position</en>
+        <ru>Позиция на борту</ru>
+        <id>1937</id>
+    </text>
+    <text>
+        <en>Landpoint</en>
+        <ru>Точка взлета-посадки</ru>
+        <id>1938</id>
+    </text>
+    <text>
+        <en>Landpoints</en>
+        <ru>Точки взлета-посадки</ru>
+        <id>1939</id>
+    </text>
+    <text>
+        <en>Staff groups</en>
+        <ru>Дополнительный персонал</ru>
+        <id>1940</id>
+    </text>
+    <text>
+        <en>Priority</en>
+        <ru>Приоритет</ru>
+        <id>1941</id>
+    </text>
+    <text>
+        <en>Base point</en>
+        <ru>Место базирования</ru>
+        <id>1942</id>
+    </text>
+    <text>
+        <en>Failure Reason</en>
+        <ru>Причина неисправности</ru>
+        <id>1943</id>
+    </text>
+    <text>
+        <en>Expected date</en>
+        <ru>Дата ввода</ru>
+        <id>1944</id>
+    </text>
+    <text>
+        <en>Planer states</en>
+        <ru>Состояния ВС</ru>
+        <id>1945</id>
+    </text>
+    <text>
+        <en>Destination</en>
+        <ru>Пункт</ru>
+        <id>1946</id>
+    </text>
+    <text>
+        <en>Additional info</en>
+        <ru>Дополнительная информация</ru>
+        <id>1947</id>
+    </text>
+    <text>
+        <en>Flight crew</en>
+        <ru>Летный состав</ru>
+        <id>1948</id>
+    </text>
+    <text>
+        <en>Plan positions</en>
+        <ru>Позиции в плане</ru>
+        <id>1949</id>
+    </text>
+    <text>
+        <en>Additional groups</en>
+        <ru>Дополнительные группы</ru>
+        <id>1950</id>
+    </text>
+    <text>
+        <en>Administrator</en>
+        <ru>Администратор</ru>
+        <id>1951</id>
     </text>
     <text>
         <en></en>
         <ru></ru>
-        <id>19</id>
+        <id>1947</id>
     </text>
     <text>
         <en></en>
         <ru></ru>
-        <id>19</id>
+        <id>1947</id>
+    </text>
+    <text>
+        <en></en>
+        <ru></ru>
+        <id>1947</id>
     </text>
 </trl>
 

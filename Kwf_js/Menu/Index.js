@@ -142,7 +142,7 @@ Kwf.Menu.Index = Ext.extend(Ext.Toolbar,
             },
             scope: this
         });
-        this.add(this.showUserMenu);
+        //this.add(this.showUserMenu);
 
         if (result.changeUser) {
             var changeUser = new Kwf.Form.ComboBox({
@@ -186,11 +186,11 @@ Kwf.Menu.Index = Ext.extend(Ext.Toolbar,
         });
 
         if (result.fullname && result.userSelfControllerUrl) {
-            this.userToolbar.add({
+            this.add({
                 id: 'currentUser',
                 text: result.fullname,
                 cls: 'x-btn-text-icon',
-                icon: '/assets/silkicons/user.png',
+                icon: '/assets/silkicons/vcard.png',
                 handler: function() {
                     var dlg = new Kwf.Auto.Form.Window({
                         formConfig: {
@@ -206,10 +206,11 @@ Kwf.Menu.Index = Ext.extend(Ext.Toolbar,
             });
         }
         if (result.showLogout) {
-            this.userToolbar.add({
-                cls: 'x-btn-icon',
-                tooltip: trlKwf('Logout'),
-                icon: '/assets/silkicons/door_out.png',
+            this.add({
+                cls: 'x-btn-text-icon',
+                tooltip: result.fullname ? trlKwf('Logout') : trlKwf('Login'),
+                text: result.fullname ? trlKwf('Logout') : trlKwf('Login'),
+                icon: result.fullname ? '/assets/silkicons/cancel.png' : '/assets/silkicons/key.png',
                 handler: function() {
                     Ext.Ajax.request({
                         url : '/kwf/user/login/json-logout-user',
@@ -224,16 +225,6 @@ Kwf.Menu.Index = Ext.extend(Ext.Toolbar,
                 scope: this
             });
         }
-        this.userToolbar.add({
-            cls: 'x-btn-icon',
-            icon: '/assets/kwf/images/information.png',
-            tooltip: trlKwf('Information'),
-            handler: function() {
-                var about = new Kwf.About();
-                about.show();
-            },
-            scope: this
-        });
 
         if (Kwf.Debug.showMenu) {
             this.userToolbar.add('-');
@@ -254,7 +245,6 @@ Kwf.Menu.Index = Ext.extend(Ext.Toolbar,
             });
         }
         this.userToolbar.hide();
-
 
         if (result.frontendUrls.length == 1) {
             //single frontend urls
