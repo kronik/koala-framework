@@ -77,16 +77,14 @@
         <ru>Добрый день {0}!</ru>
     </text>
     <text>
-        <en>Your account at {0}
-            has just been created.</en>
+        <en>Your account at {0} has just been created.</en>
         <de>Ihr Konto bei {0}wurde soeben erstellt.</de>
         <id>15</id>
         <ro>Tocmai a fost creat contul dumneavoastră pentru {0}.</ro>
         <uk>Ваш аккаунт створено</uk>
         <mk>Вашиот акаунт е креиран.</mk>
         <sl>Pravkar ste uspešno ustvarili svoj račun pri {0}.</sl>
-        <ru>Ваш аккаунт на {0}
-            только что был создан.</ru>
+        <ru>Ваш аккаунт на {0} только что был создан.</ru>
     </text>
     <text>
         <en>Please use the following link to choose yourself a password and to login</en>
@@ -106,7 +104,7 @@
         <uk>Це повідомлення було сформовано автоматично. Якщо Ви відповісте на цей лист, одержувача може не бути</uk>
         <mk>Овој e-mail е генериран автоматски. Ако одговорите на ова порака може да нема примач.</mk>
         <sl>To je avtomatsko generirano e-sporočilo. To sporočilo je bilo generirano avtomatsko, zato nanj ne odgovarjajte.</sl>
-        <ru>Этот E-Mail был сгененрирован автоматически. Возможно, получателя не существует.</ru>
+        <ru>Этот E-Mail был сгененрирован автоматически. Возможно, отправителя не существует.</ru>
     </text>
     <text>
         <en>Your account at {0} has been deleted.</en>
@@ -1259,6 +1257,7 @@
         <id>280</id>
         <ro>Vă rugăm să introduceţi parola dumneavoastră. După ce faceţi click pe butonul de mai jos</ro>
         <sl>Vnesite geslo. Kliknite na spodnji gumb,</sl>
+        <ru>Пожалуйста, введите ваш пароль. Затем, нажав кнопку внизу,</ru>
     </text>
     <text>
         <en>you are logged in automatically and may use the typed in password</en>
@@ -1266,6 +1265,7 @@
         <id>281</id>
         <ro> veţi fi logat automat şi veţi putea să folosiţi parola introdusă</ro>
         <sl>če želite avtomatsko prijavo. Vneseno geslo lahko</sl>
+        <ru>вы войдете в систему автоматически. Данный пароль можно использовать</ru>
     </text>
     <text>
         <en>for future logins.</en>
@@ -1273,6 +1273,7 @@
         <id>282</id>
         <ro> pentru login-urile viitoare.</ro>
         <sl>uporabite ob prihodnjih prijavah.</sl>
+        <ru> для последующих входов</ru>
     </text>
     <text>
         <en>Your email address:</en>
@@ -1281,6 +1282,7 @@
         <mk>Вашата email адреса:</mk>
         <ro>Adresa dumneavoastră de e-mail:</ro>
         <sl>Vaš e-naslov:</sl>
+        <ru>Ваш EMail адрес</ru>
     </text>
     <text>
         <en>Activate and login account</en>
@@ -1288,6 +1290,7 @@
         <id>284</id>
         <ro>Activare şi login cont</ro>
         <sl>Aktiviranje računa in prijava</sl>
+        <ru>Активировать и войти</ru>
     </text>
     <text>
         <en>The repeated password is different - please try again.</en>
@@ -2873,6 +2876,7 @@
         <id>587</id>
         <ro>Vă rugăm să faceţi click aici pentru a activa contul dumneavoastră şi pentru a vă autentifica</ro>
         <sl>Kliknite tukaj, če želite aktivirati račun in se prijaviti.</sl>
+        <ru>Кликните сюда для активации и входа в ваш Аккаунт</ru>
     </text>
     <text>
         <en>If the activationlink does not work, copy the following address and paste it in your browser (it is possible that the address has a line-break, so please be sure to copy everything correctly):</en>
@@ -2880,6 +2884,7 @@
         <id>588</id>
         <ro>În cazul în care link-ul de activare nu funcţionează, vă rugăm să copiaţi următoarea adresă şi să o inseraţi în browser-ul dumneavoastră (este posibil ca adresa să conţină mai multe rânduri, de accea, vă rugăm să aveţi grijă să fie copiat integral):</ro>
         <sl>Če aktivacijska povezava ne deluje, skopirajte naslednji naslov in ga prilepite v naslovno vrstico brskalnika (naslov je lahko v več vrsticah, zato se prepričajte, da ste vse pravilno kopirali):</sl>
+        <ru>Если ссылка активации не работает, скопируйте следующий адрес и вставьте его в ваш браузер (возможно адрес имеет знаки переноса, поэтому убедитесь что адрес скопирован верно):</ru>
     </text>
     <text>
         <en>Your email address at {0} has been changed.</en>
@@ -3541,6 +3546,7 @@
         <id>720</id>
         <ro>Cont creat cu succes</ro>
         <sl>Račun je bil uspešno ustvarjen.</sl>
+        <ru>Аккаунт пользователя создан</ru>
     </text>
     <text>
         <en>lost password</en>
@@ -5984,6 +5990,7 @@
         <id>1191</id>
         <ro>Tocmai a fost activat contul&lt;br /&gt; dumneavoastră pentru {0}.</ro>
         <sl>Pravkar ste aktivirali svoj račun na {0}&lt;br /&gt;.</sl>
+        <ru>Ваш аккаунт на {0}&lt;br /&gt;только что был активирован.</ru>
     </text>
     <text>
         <en>You may now log in to your account.</en>
@@ -6005,6 +6012,7 @@
         <id>1194</id>
         <ro>Tocmai a fost activat contul dumneavoastră pentru {0}.</ro>
         <sl>Pravkar ste aktivirali svoj račun na {0}.</sl>
+        <ru>Ваш аккаунт на {0} только что был активирован.</ru>
     </text>
     <text>
         <en>Dear {0} {1}</en>
@@ -6943,6 +6951,7 @@
         <id>1350</id>
         <ro>Cont creat de {0}.</ro>
         <sl>Račun je ustvaril {0}.</sl>
+        <ru>{0} создал аккаунт.</ru>
     </text>
     <text>
         <en>Account edited.</en>
@@ -6950,6 +6959,7 @@
         <id>1351</id>
         <ro>Cont editat.</ro>
         <sl>Račun je urejen.</sl>
+        <ru>Аккаунт активирован.</ru>
     </text>
     <text>
         <en>Account edited by {0}.</en>
@@ -6957,6 +6967,8 @@
         <id>1352</id>
         <ro>Cont editat de {0}.</ro>
         <sl>Račun je uredil {0}.</sl>
+        <ru>Запись измененена {0}.</ru>
+        <ru>{0} изменил аккаунт.</ru>
     </text>
     <text>
         <en>Account activated.</en>
@@ -6964,6 +6976,7 @@
         <id>1353</id>
         <ro>Cont activat.</ro>
         <sl>Račun je aktiviran.</sl>
+        <ru>Аккаунт активирован.</ru>
     </text>
     <text>
         <en>Account activated by {0}.</en>
@@ -6971,6 +6984,7 @@
         <id>1354</id>
         <ro>Cont activat de {0}.</ro>
         <sl>Račun je aktiviral {0}.</sl>
+        <ru>{0} активировал аккаунт.</ru>
     </text>
     <text>
         <en>Password set.</en>
@@ -7034,6 +7048,7 @@
         <id>1363</id>
         <ro>E-mail de activare trimis.</ro>
         <sl>Aktivacijsko e-sporočilo je poslano.</sl>
+        <ru>Письмо с ссылкой активации выслано.</ru>
     </text>
     <text>
         <en>Activation e-mail sent by {0}.</en>
@@ -7041,6 +7056,7 @@
         <id>1364</id>
         <ro>E-mail de activare trimis de {0}.</ro>
         <sl>Aktivacijsko e-sporočilo je poslal {0}.</sl>
+        <ru>{0} выслал письмо с ссылкой активации.</ru>
     </text>
     <text>
         <en>Global user activation e-mail sent.</en>
@@ -7112,6 +7128,7 @@
         <id>1374</id>
         <ro>La autentificare a fost utilizată o parolă greşită de către {0}.</ro>
         <sl>Pri prijavi je napačno geslo uporabil {0}.</sl>
+        <ru>{0} ввел неправильный логин или пароль.</ru>
     </text>
     <text>
         <en>Tried login into locked account.</en>
@@ -9937,19 +9954,99 @@
         <id>1951</id>
     </text>
     <text>
-        <en></en>
-        <ru></ru>
-        <id>1947</id>
+        <en>Question</en>
+        <ru>Вопрос</ru>
+        <id>1952</id>
+    </text>
+    <text>
+        <en>Questions</en>
+        <ru>Вопросы</ru>
+        <id>1953</id>
+    </text>
+    <text>
+        <en>Theory</en>
+        <ru>Теория</ru>
+        <id>1954</id>
+    </text>
+    <text>
+        <en>Practice</en>
+        <ru>Практика</ru>
+        <id>1955</id>
+    </text>
+    <text>
+        <en>Answers</en>
+        <ru>Ответы</ru>
+        <id>1956</id>
+    </text>
+    <text>
+        <en>Answer</en>
+        <ru>Ответ</ru>
+        <id>1957</id>
+    </text>
+    <text>
+        <en>Correct</en>
+        <ru>Правильный</ru>
+        <id>1958</id>
+    </text>
+    <text>
+        <en>Groups</en>
+        <ru>Группы</ru>
+        <id>1959</id>
+    </text>
+    <text>
+        <en>Questions in session</en>
+        <ru>Кол-во вопросов</ru>
+        <id>1960</id>
+    </text>
+    <text>
+        <en>Score</en>
+        <ru>Баллы</ru>
+        <id>1961</id>
+    </text>
+    <text>
+        <en>Guest</en>
+        <ru>Гость</ru>
+        <id>1962</id>
+    </text>
+    <text>
+        <en>My trainings</en>
+        <ru>Мои курсы</ru>
+        <id>1963</id>
+    </text>
+    <text>
+        <en>My training</en>
+        <ru>Мой курс</ru>
+        <id>1964</id>
+    </text>
+    <text>
+        <en>My group</en>
+        <ru>Моя группа</ru>
+        <id>1965</id>
+    </text>
+    <text>
+        <en>My groups</en>
+        <ru>Мои группы</ru>
+        <id>1966</id>
     </text>
     <text>
         <en></en>
         <ru></ru>
-        <id>1947</id>
+        <id>1954</id>
     </text>
     <text>
         <en></en>
         <ru></ru>
-        <id>1947</id>
+        <id>1954</id>
+    </text>
+    <text>
+        <en></en>
+        <ru></ru>
+        <id>1954</id>
+    </text>
+    <text>
+        <en></en>
+        <ru></ru>
+        <id>1954</id>
     </text>
 </trl>
 

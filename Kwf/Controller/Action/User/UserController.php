@@ -76,7 +76,7 @@ class Kwf_Controller_Action_User_UserController extends Kwf_Controller_Action_Au
         // alle erlaubten haupt-rollen in variable
         $roles = array();
         foreach ($acl->getAllowedEditRolesByRole($userRole) as $role) {
-            $roles[$role->getRoleId()] = $role->getRoleName();
+            $roles[$role->getRoleId()] = trlKwf($role->getRoleName());
         }
         if (!$roles) return null;
 

@@ -9,7 +9,7 @@ class Kwf_Controller_Action_User_UsersController extends Kwf_Controller_Action_A
     protected $_queryFields = array('id', 'email', 'firstname', 'lastname');
     protected $_editDialog = array('controllerUrl'=>'/kwf/user/user',
                                    'width'=>550,
-                                   'height'=>520);
+                                   'height'=>650);
 
     public function preDispatch()
     {
@@ -38,7 +38,7 @@ class Kwf_Controller_Action_User_UsersController extends Kwf_Controller_Action_A
         $acl = Kwf_Registry::get('acl');
         $userRole = Kwf_Registry::get('userModel')->getAuthedUserRole();
         foreach ($acl->getAllowedEditRolesByRole($userRole) as $role) {
-            $roles[] = array($role->getRoleId(), $role->getRoleName());
+            $roles[] = array($role->getRoleId(), trlKwf($role->getRoleName()));
         }
         $this->_filters['role'] = array(
             'type'=>'ComboBox',
@@ -49,27 +49,25 @@ class Kwf_Controller_Action_User_UsersController extends Kwf_Controller_Action_A
             'data' => $roles
         );
 
-        $this->_columns->add(new Kwf_Grid_Column_Button('edit', trlKwf('Edit')));
-        $this->_columns->add(new Kwf_Grid_Column('id', 'ID', 50));
-        $this->_columns->add(new Kwf_Grid_Column('email', trlKwf('Email'), 140));
+        $this->_columns->add(new Kwf_Grid_Column_Button('edit', trlKwf('Edit'), 70));
+        $this->_columns->add(new Kwf_Grid_Column('email', trlKwf('Email'), 200));
         $this->_columns->add(new Kwf_Grid_Column('role', trlKwf('Rights')))
             ->setData(new Kwf_Controller_Action_User_Users_RoleData());
 
         $this->_columns->add(new Kwf_Grid_Column('gender', trlKwf('Gender'), 70))
             ->setRenderer('genderIcon');
-        $this->_columns->add(new Kwf_Grid_Column('title', trlKwf('Title'), 80));
 
         $this->_columns->add(new Kwf_Grid_Column('firstname', trlKwf('First name'), 110));
         $this->_columns->add(new Kwf_Grid_Column('lastname', trlKwf('Last name'), 110));
 
         if (isset($this->_getAuthData()->language)) {
-             $this->_columns->add(new Kwf_Grid_Column('language', trlKwf('lang'), 30));
+             $this->_columns->add(new Kwf_Grid_Column('language', trlKwf('lang'), 60));
         }
 
-        $this->_columns->add(new Kwf_Grid_Column('password', trlKwf('Activated'), 60))
+        $this->_columns->add(new Kwf_Grid_Column('password', trlKwf('Activated'), 80))
             ->setRenderer('boolean')
             ->setShowIn(Kwf_Grid_Column::SHOW_IN_ALL ^ Kwf_Grid_Column::SHOW_IN_XLS);
-        $this->_columns->add(new Kwf_Grid_Column_Checkbox('locked', trlKwf('Locked'), 60));
+        $this->_columns->add(new Kwf_Grid_Column_Checkbox('locked', trlKwf('Locked'), 80));
 
         $authedRole = Zend_Registry::get('userModel')->getAuthedUserRole();
         $acl = Zend_Registry::get('acl');
@@ -78,7 +76,7 @@ class Kwf_Controller_Action_User_UsersController extends Kwf_Controller_Action_A
                  ->setData(new Kwf_Controller_Action_User_Users_WebcodeData())
                  ->setShowIn(Kwf_Grid_Column::SHOW_IN_ALL ^ Kwf_Grid_Column::SHOW_IN_XLS);
         }
-        $this->_columns->add(new Kwf_Grid_Column_Button('resend_mails', trlKwf('E-Mails')))
+        $this->_columns->add(new Kwf_Grid_Column_Button('resend_mails', trlKwf('E-Mails'), 100))
             ->setTooltip(trlKwf('Sent E-Mail again'))
             ->setButtonIcon(new Kwf_Asset('email_go.png'));
     }
