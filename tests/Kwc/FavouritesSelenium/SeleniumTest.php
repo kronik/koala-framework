@@ -9,6 +9,13 @@ class Kwc_FavouritesSelenium_SeleniumTest extends Kwf_Test_SeleniumTestCase
     public function setUp()
     {
         parent::setUp();
+
+        //clear view cache
+        Kwf_Cache::factory('Core', 'Memcached', array(
+            'lifetime'=>null,
+            'automatic_cleaning_factor' => false,
+            'automatic_serialization'=>true))->clean();
+
         Kwf_Component_Data_Root::setComponentClass('Kwc_FavouritesSelenium_Root');
 
         //use custom user model
@@ -36,6 +43,7 @@ class Kwc_FavouritesSelenium_SeleniumTest extends Kwf_Test_SeleniumTestCase
 
         // click on fav-icon to favourise
         $this->click("css=.switchLink > a");
+        sleep(1);
         $this->assertText('css=.kwcFavouritesPageComponentFavouritesCount', '3');
 
         //reload to check if persistent
@@ -44,6 +52,7 @@ class Kwc_FavouritesSelenium_SeleniumTest extends Kwf_Test_SeleniumTestCase
 
         // click on fav-icon to defavourise
         $this->click("css=.switchLink > a");
+        sleep(1);
         $this->assertText('css=.kwcFavouritesPageComponentFavouritesCount', '2');
 
         //reload to check if persistent

@@ -107,9 +107,7 @@ class Kwf_Media
         $cacheId = self::createCacheId($class, $id, $type);
         Kwf_Cache_Simple::delete('media-output-'.$cacheId);
         Kwf_Cache_Simple::delete('media-output-mtime-'.$cacheId);
-        if (file_exists('cache/media/'.$cacheId)) {
-            unlink('cache/media/'.$cacheId);
-        }
+        //not required to delete cache/media/$cacheId, that will be regenerated if media-output-$cacheId is deleted
     }
 
     public static function getOutputWithoutCheckingIsValid($class, $id, $type)
@@ -126,8 +124,8 @@ class Kwf_Media
         if ($output && !isset($output['file']) && !isset($output['contents'])) {
             //scaled image is not cached in apc as it might be larger - load from disk
             $output['file'] = 'cache/media/'.$cacheId;
-            if (!file_exists($output['file'])) $output = false;
         }
+        if (isset($output['file']) && !file_exists($output['file'])) $output = false;
 
         if ($output && isset($output['mtimeFiles'])) {
             foreach ($output['mtimeFiles'] as $f) {
@@ -169,7 +167,6 @@ class Kwf_Media
                 $cacheData = $output;
                 if (isset($cacheData['contents']) && strlen($cacheData['contents']) > 20*1024) {
                     //don't cache contents larger than 20k in apc, use separate file cache
-                    //TODO lifetime isn't respected for this file
                     file_put_contents('cache/media/'.$cacheId, $cacheData['contents']);
                     unset($cacheData['contents']);
                 }
