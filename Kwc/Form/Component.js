@@ -1,3 +1,5 @@
+Kwf.Utils.ResponsiveEl('.kwcForm', [{maxWidth: 500, cls: 'veryNarrow'}, {minWidth: 500, cls: 'gt500'}, {minWidth: 350, cls: 'gt350'}]);
+
 Kwf.onContentReady(function(el, param) {
     if (!param.newRender) return false;
     Ext.select('.kwcForm > form', true, el).each(function(form) {
@@ -133,7 +135,12 @@ Ext.extend(Kwc.Form.Component, Ext.util.Observable, {
         }
 
         if (!this.config.useAjaxRequest || this.ajaxRequestSubmitted) return;
-
+        this.submit();
+        e.stopEvent();
+    },
+    
+    submit: function()
+    {
         var button = this.el.child('.submitWrapper .button');
         button.down('.saving').show();
         button.down('.submit').hide();
@@ -193,14 +200,57 @@ Ext.extend(Kwc.Form.Component, Ext.util.Observable, {
                     Kwf.callOnContentReady(this.el.dom);
                 }
 
+                var scrollTo = null;
                 if (!hasErrors) {
+                    // Scroll to top of form
+                    scrollTo = this.el.getY();
                     this.fireEvent('submitSuccess', this, r);
+                } else {
+                    // Get position of first error field
+                    for(var fieldName in r.errorFields) {
+                        var field = this.findField(fieldName);
+                        if (field) {
+                            var pos = field.el.getY();
+                            if (scrollTo == null || scrollTo > pos) {
+                                scrollTo = pos;
+                            }
+                        }
+                    }
+                }
+                if (scrollTo != null) {
+                    //if scrollto is already on screen
+                    var height = $(window).height();
+                    var scrollPosY = $(window).scrollTop();
+                    if (scrollTo < scrollPosY || scrollTo > scrollPosY + height) {
+                        scrollTo -= 20;
+                        var stopAnimationFunction = function(e) {
+                            if ( e.which > 0 || e.type == "mousedown"
+                                || e.type == "mousewheel"
+                                || e.type == 'touchstart'){
+                                $("html, body").stop();
+                                $('body,html')
+                                    .unbind('scroll mousedown DOMMouseScroll mousewheel keyup touchstart',
+                                    stopAnimationFunction);
+                            }
+                        };
+                        $('html, body').animate({
+                            scrollTop: scrollTo
+                        }, 2000, 'swing', function () {
+                            $('body,html')
+                                .unbind('scroll mousedown DOMMouseScroll mousewheel keyup touchstart',
+                                stopAnimationFunction);
+                        });
+                        //This is a fix for the problem that it's not possible to
+                        //scroll while the animation is running. This stops the
+                        //animation on scroll, click or key-down
+                        //http://stackoverflow.com/questions/2834667/how-can-i-differentiate-a-manual-scroll-via-mousewheel-scrollbar-from-a-javasc?answertab=oldest#tab-top
+                        $('body,html').bind('scroll mousedown DOMMouseScroll mousewheel keyup touchstart', stopAnimationFunction);
+                    }
                 }
 
+                this.fireEvent('submitSuccess', this, r);
             },
             scope: this
         });
-
-        e.stopEvent();
     }
 });

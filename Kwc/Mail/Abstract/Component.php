@@ -5,6 +5,7 @@
  * doesn't need a row and isn't editable
  */
 abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
+    implements Kwf_Media_Output_Interface
 {
     private $_mailData;
 
@@ -18,8 +19,6 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
             'name' => trlKwfStatic('E-Mail'),
             'filename' => 'r'
         );
-
-        $ret['viewCache'] = false;
 
         $ret['mailHtmlStyles'] = array();
         $ret['plugins']['placeholders'] = 'Kwc_Mail_PlaceholdersPlugin';
@@ -36,6 +35,7 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
         $ret['returnPath'] = null;
         $ret['subject'] = trlKwf('Automatically sent e-mail');
         $ret['attachImages'] = false;
+        $ret['trackViews'] = false;
 
         return $ret;
     }
@@ -52,7 +52,7 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
         return $ret;
     }
 
-    public function createMail(Kwc_Mail_Recipient_Interface $recipient, $data = null, $toAddress = null, $format = null)
+    public function createMail(Kwc_Mail_Recipient_Interface $recipient, $data = null, $toAddress = null, $format = null, $addViewTracker = true)
     {
         $this->_mailData = $data;
 
@@ -71,7 +71,7 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
         if ((!$format && $recipient->getMailFormat() == Kwc_Mail_Recipient_Interface::MAIL_FORMAT_HTML) ||
             $format == Kwc_Mail_Recipient_Interface::MAIL_FORMAT_HTML)
         {
-            $html = $this->getHtml($recipient);
+            $html = $this->getHtml($recipient, $addViewTracker);
             $mail->setDomain($this->getData()->getDomain());
             $mail->setAttachImages($this->_getSetting('attachImages'));
             $mail->setBodyHtml($html);
@@ -106,9 +106,9 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
      *        ausgelesen werden
      * Wird von Gästebuch verwendet
      */
-    public function send(Kwc_Mail_Recipient_Interface $recipient, $data = null, $toAddress = null, $format = null)
+    public function send(Kwc_Mail_Recipient_Interface $recipient, $data = null, $toAddress = null, $format = null, $addViewTracker = true)
     {
-        $mail = $this->createMail($recipient, $data, $toAddress, $format);
+        $mail = $this->createMail($recipient, $data, $toAddress, $format, $addViewTracker);
         return $mail->send();
     }
 
@@ -122,18 +122,32 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
     /**
      * Gibt den personalisierten HTML-Quelltext der Mail zurück
      */
-    public function getHtml(Kwc_Mail_Recipient_Interface $recipient = null)
+    public function getHtml(Kwc_Mail_Recipient_Interface $recipient = null, $addViewTracker = false)
     {
         $renderer = new Kwf_Component_Renderer_Mail();
         $renderer->setRenderFormat(Kwf_Component_Renderer_Mail::RENDER_HTML);
         $renderer->setRecipient($recipient);
+        $renderer->setHtmlStyles($this->getHtmlStyles());
         $ret = $renderer->renderComponent($this->getData());
+        Kwf_Benchmark::checkpoint('html: render');
         $ret = $this->_processPlaceholder($ret, $recipient);
-        $ret = $this->getData()->getChildComponent('_redirect')->getComponent()->replaceLinks($ret, $recipient);
-        $htmlStyles = $this->getHtmlStyles();
-        if ($htmlStyles){
-            $p = new Kwc_Mail_HtmlParser($htmlStyles);
-            $ret = $p->parse($ret);
+        Kwf_Benchmark::checkpoint('html: placeholder');
+        $redirectComponent = $this->getData()->getChildComponent('_redirect')->getComponent();
+        $ret = $redirectComponent->replaceLinks($ret, $recipient);
+        Kwf_Benchmark::checkpoint('html: replaceLinks');
+        if ($addViewTracker && $this->_getSetting('trackViews')) {
+            $params = array();
+            if ($recipient->id) $params['recipientId'] = urlencode($recipient->id);
+            if ($shortcut = $redirectComponent->getRecipientModelShortcut(get_class($recipient->getModel())))
+                $params['recipientModelShortcut'] = urlencode($shortcut);
+            $https = Kwf_Util_Https::domainSupportsHttps($this->getData()->getDomain());
+            $protocol = $https ? 'https' : 'http';
+            $imgUrl = $protocol . '://'.$this->getData()->getDomain() .
+                Kwf_Media::getUrl($this->getData()->componentClass, $this->getData()->componentId,
+                    'views', 'blank.gif');
+            $imgUrl .= '?' . http_build_query($params);
+            $ret .= '<img src="' . $imgUrl . '" width="1" height="1" />';
+            Kwf_Benchmark::checkpoint('html: view tracker');
         }
         return $ret;
     }
@@ -149,9 +163,12 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
         $renderer->setRenderFormat(Kwf_Component_Renderer_Mail::RENDER_TXT);
         $renderer->setRecipient($recipient);
         $ret = $renderer->renderComponent($this->getData());
+        Kwf_Benchmark::checkpoint('text: render');
         $ret = $this->_processPlaceholder($ret, $recipient);
+        Kwf_Benchmark::checkpoint('text: placeholder');
         $ret = str_replace('&nbsp;', ' ', $ret);
         $ret = $this->getData()->getChildComponent('_redirect')->getComponent()->replaceLinks($ret, $recipient);
+        Kwf_Benchmark::checkpoint('text: replaceLinks');
         return $ret;
     }
 
@@ -190,5 +207,28 @@ abstract class Kwc_Mail_Abstract_Component extends Kwc_Abstract
             $ret = Kwc_Mail_Recipient_Placeholders::getPlaceholders($recipient, $this->getData()->getLanguage());
         }
         return $ret;
+    }
+
+    public static function getMediaOutput($id, $type, $className)
+    {
+        if ($type == 'views') {
+            if (isset($_GET['recipientId']) && $_GET['recipientId'] &&
+                isset($_GET['recipientModelShortcut']) && $_GET['recipientModelShortcut']) {
+                $model = Kwf_Model_Abstract::getInstance('Kwc_Mail_Abstract_ViewsModel');
+                $model->createRow(array(
+                    'mail_component_id' => $id,
+                    'recipient_id' => $_GET['recipientId'],
+                    'recipient_model_shortcut' => $_GET['recipientModelShortcut'],
+                    'ip' => $_SERVER['REMOTE_ADDR'],
+                    'date' => date('Y-m-d H:i:s')
+                ))->save();
+            }
+            $file = array(
+                'contents' => base64_decode('R0lGODlhAQABAJAAAP8AAAAAACH5BAUQAAAALAAAAAABAAEAAAICBAEAOw=='),
+                'mimeType' => 'image/gif',
+                'lifetime' => false
+            );
+            return $file;
+        }
     }
 }

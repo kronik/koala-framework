@@ -49,17 +49,7 @@ Ext.extend(Kwf.Utils.SwfUpload, Ext.util.Observable, {
         for (var i in params) {
             if (typeof params[i] == 'boolean') params[i] = params[i] ? 1 : 0;
         }
-
-        //cookie als post mitschicken
-        var cookies = document.cookie.split(';');
-        Ext.each(cookies, function(c) {
-            c = c.split('=');
-
-            if (c[0].trim() == 'PHPSESSID' && c[1]) {
-                params.PHPSESSID = c[1];
-            }
-        });
-        if (!params.PHPSESSID) return;
+        if (Kwf.sessionToken) params.kwfSessionToken = Kwf.sessionToken;
 
         this.swfu = new SWFUpload({
             minimum_flash_version : '9.0.28',

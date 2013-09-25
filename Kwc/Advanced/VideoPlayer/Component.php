@@ -9,14 +9,14 @@ class Kwc_Advanced_VideoPlayer_Component extends Kwc_Abstract_Composite_Componen
         $ret = array_merge(parent::getSettings(), array(
             'ownModel'     => 'Kwc_Advanced_VideoPlayer_Model',
             'componentName' => trlKwfStatic('Video'),
-            'componentIcon' => new Kwf_Asset('images'),
+            'componentIcon' => new Kwf_Asset('film'),
             'extConfig' => 'Kwf_Component_Abstract_ExtConfig_Form'
         ));
         $ret['assets']['files'][] = 'kwf/Kwc/Advanced/VideoPlayer/Component.js';
         $ret['assetsAdmin']['dep'][] = 'KwfFormFile';
         $ret['assets']['dep'][] = 'jQuery';
         $ret['assets']['dep'][] = 'mediaelement';
-        $ret['assets']['dep'][] = 'ExtCore';
+        $ret['assets']['dep'][] = 'KwfOnReady';
 
         $ret['video'] = array(
             'defaultVideoWidth' =>  480,

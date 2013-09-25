@@ -61,11 +61,11 @@ class Kwf_Util_SessionHandler
         $this->_memcache = new Memcache();
         if (Kwf_Config::getValue('aws.simpleCacheCluster')) {
             $servers = Kwf_Util_Aws_ElastiCache_CacheClusterEndpoints::getCached(Kwf_Config::getValue('aws.simpleCacheCluster'));
-        } else if (Kwf_Config::getValue('server.memcache.host')) {
+        } else if (Kwf_Cache_Simple::$memcacheHost) {
             $servers = array(
                 array(
-                    'host' => Kwf_Config::getValue('server.memcache.host'),
-                    'port' => Kwf_Config::getValue('server.memcache.port')
+                    'host' => Kwf_Cache_Simple::$memcacheHost,
+                    'port' => Kwf_Cache_Simple::$memcachePort
                 )
             );
         } else {

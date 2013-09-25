@@ -1,43 +1,70 @@
 <?php
 class Kwf_Component_Renderer extends Kwf_Component_Renderer_Abstract
 {
-    private $_renderMaster;
     public function renderMaster($component)
     {
-        $this->_renderMaster = true;
-        return parent::renderComponent($component);
-    }
+        static $benchmarkEnabled;
+        if (!isset($benchmarkEnabled)) $benchmarkEnabled = Kwf_Benchmark::isEnabled();
 
-    public function renderComponent($component)
-    {
-        $this->_renderMaster = false;
-        return parent::renderComponent($component);
-    }
+        $this->_renderComponent = $component;
 
-    protected function _renderComponentContent($component)
-    {
-        if ($this->_renderMaster) {
+        $content = false;
+        if ($this->_enableCache) {
+            $content = Kwf_Component_Cache::getInstance()->load($component->componentId, $this->_getRendererName(), 'fullPage');
+            $this->_minLifetime = null;
+        }
+
+        Kwf_Benchmark::checkpoint('load fullPage cache');
+
+        $statType = null;
+        if (!$content) {
+            if ($benchmarkEnabled) $startTime = microtime(true);
             if (!$this->_enableCache ||
-                ($content = Kwf_Component_Cache::getInstance()->load($component, 'component', 'page')) === null) {
+                ($content = Kwf_Component_Cache::getInstance()->load($component, $this->_getRendererName(), 'page')) === null) {
                 $masterHelper = new Kwf_Component_View_Helper_Master();
                 $masterHelper->setRenderer($this);
                 $content = $masterHelper->master($component);
                 if ($this->_enableCache) {
                     Kwf_Component_Cache::getInstance()
-                        ->save($component, $content, 'component', 'page');
+                        ->save($component, $content, $this->_getRendererName(), 'page');
+
+                    $statType = 'miss';
+                } else {
+                    $statType = 'noviewcache';
                 }
+            } else {
+                $statType = 'hit';
             }
-            if ($content == Kwf_Component_Cache::NO_CACHE) {
-                //TODO: entfernen wenn nie auftritt
-                throw new Kwf_Exception("something is very wrong");
+            if ($statType) Kwf_Benchmark::count("rendered $statType", $component->componentId.': page');
+            Kwf_Benchmark::countLog('render-'.$statType);
+
+            if ($benchmarkEnabled) Kwf_Benchmark::subCheckpoint($component->componentId.' page', microtime(true)-$startTime);
+            Kwf_Benchmark::checkpoint('render page');
+
+            $pass1Cacheable = true;
+            $content = $this->_render(1, $content, $pass1Cacheable);
+            Kwf_Benchmark::checkpoint('render pass 1');
+            if ($this->_enableCache && $pass1Cacheable) {
+                Kwf_Component_Cache::getInstance()->save($component, $content, $this->_getRendererName(), 'fullPage', '', $this->_minLifetime);
             }
-            return $content;
+            Kwf_Benchmark::count("rendered miss", $component->componentId.': fullPage');
+
+            Kwf_Benchmark::countLog('fullpage-miss');
         } else {
-            return parent::_renderComponentContent($component);
+            Kwf_Benchmark::count("rendered hit", $component->componentId.': fullPage');
+            Kwf_Benchmark::countLog('fullpage-hit');
         }
+
+        $content = $this->_render(2, $content);
+        Kwf_Benchmark::checkpoint('render pass 2');
+
+
+
+        Kwf_Component_Cache::getInstance()->writeBuffer();
+        return $content;
     }
 
-    protected function _getCacheName()
+    protected function _getRendererName()
     {
         return 'component';
     }

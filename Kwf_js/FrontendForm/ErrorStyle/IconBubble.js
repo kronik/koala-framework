@@ -7,7 +7,7 @@ Kwf.FrontendForm.ErrorStyle.IconBubble = Ext.extend(Kwf.FrontendForm.ErrorStyle.
             if (!firstField) { firstField = field; }
             field.el.addClass('kwfFieldError');
             if (!field.errorEl) {
-                field.errorEl = field.el.createChild({
+                field.errorEl = field.el.child('.kwfFormFieldWrapper').createChild({
                     cls: 'kwfFieldErrorIconBubble'
                 });
                 field.errorEl.createChild({
@@ -20,32 +20,9 @@ Kwf.FrontendForm.ErrorStyle.IconBubble = Ext.extend(Kwf.FrontendForm.ErrorStyle.
                 field.errorEl.child('.arrow').enableDisplayMode('block');
                 field.errorEl.child('.message').hide();
                 field.errorEl.child('.arrow').hide();
-                if (field instanceof Kwf.FrontendForm.TextArea) {
-                    field.errorEl.alignTo(field.el.child('textarea'), 'tr', [-20, 2]);
-                } else if (field instanceof Kwf.FrontendForm.Radio) {
-                    field.errorEl.alignTo(field.el.child('.kwfFormFieldRadio span:last'), 'tr', [0, 0]);
-                } else if (field instanceof Kwf.FrontendForm.MultiCheckbox) {
-                    field.errorEl.alignTo(field.el.child('input'), 'tr', [-6, -8]);
-                } else if (field instanceof Kwf.FrontendForm.Checkbox) {
-                    field.errorEl.alignTo(field.el.child('input'), 'tr', [-6, -8]);
-                } else if (field.el.child('input')) {
-                    if (field.el.child('input').getWidth() < 40) {
-                        field.errorEl.alignTo(field.el.child('input'), 'tr', [-10, 2]);
-                    } else {
-                        field.errorEl.alignTo(field.el.child('input'), 'tr', [-20, 2]);
-                    }
-                } else if (field.el.child('select')) {
-                    if (field.el.child('select').getWidth() < 60) {
-                        field.errorEl.alignTo(field.el.child('select'), 'tr', [-8, 2]);
-                    } else {
-                        field.errorEl.alignTo(field.el.child('select'), 'tr', [-35, 2]);
-                    }
-                } else {
-                    field.errorEl.alignTo(field.el, 'r', [-40, 2]);
-                }
                 field.errorEl.enableDisplayMode('block');
                 field.errorEl.hide();
-                
+
                 Kwf.Event.on(Ext.get(field.el), 'mouseEnter', function() {
                     if (firstField) {
                         firstField.errorEl.child('.message').stopFx().fadeOut({duration: 0.4});

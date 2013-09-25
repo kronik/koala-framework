@@ -3,6 +3,7 @@ class Kwc_Mail_Redirect_Component extends Kwc_Abstract
 {
     protected $_params = array();
     protected $_redirectRow = null;
+    protected $_redirectRowsCache = array();
 
     public static function getSettings()
     {
@@ -116,7 +117,7 @@ class Kwc_Mail_Redirect_Component extends Kwc_Abstract
             $m = $this->getChildModel();
         }
 
-        while (preg_match('/\*([a-zA-Z_]+?)\*(.+?)\*/', $mailText, $matches)) {
+        while (preg_match('/\*([a-zA-Z_]+?)\*(.+?)(\*\*(.+?))?\*/', $mailText, $matches)) {
             if (!$recipient) {
                 $mailText = str_replace(
                     $matches[0],
@@ -125,12 +126,24 @@ class Kwc_Mail_Redirect_Component extends Kwc_Abstract
                 );
             } else {
                 $href = htmlspecialchars_decode($matches[2]);
-                $r = $m->getRow($m->select()->whereEquals('value', $href));
-                if (!$r) {
-                    $r = $m->createRow(array(
-                        'value' => $href,
-                        'type' => $matches[1]
-                    ));
+                $title = '';
+                if (isset($matches[4])) {
+                    $title = htmlspecialchars_decode($matches[4]);
+                }
+                if (!isset($this->_redirectRowsCache[$href])) {
+                    $r = $m->getRow($m->select()->whereEquals('value', $href));
+                    if (!$r) {
+                        $r = $m->createRow(array(
+                            'value' => $href,
+                            'type' => $matches[1]
+                        ));
+                        $r->save();
+                    }
+                    $this->_redirectRowsCache[$href] = $r;
+                }
+                $r = $this->_redirectRowsCache[$href];
+                if (empty($r->title) && !empty($title)) {
+                    $r->title = $title;
                     $r->save();
                 }
 
@@ -142,6 +155,7 @@ class Kwc_Mail_Redirect_Component extends Kwc_Abstract
                 $newLink = $this->_getRedirectUrl(array(
                     $r->id, $recipient->$recipientPrimary, $recipientSource
                 ));
+
                 $mailText = str_replace($matches[0], $newLink, $mailText);
             }
         }
@@ -158,6 +172,12 @@ class Kwc_Mail_Redirect_Component extends Kwc_Abstract
     public function getRecipientModelShortcut($recipientModelClass)
     {
         $recipientSources = $this->getData()->parent->getComponent()->getRecipientSources();
+        foreach ($recipientSources as $key=>$value) {
+            if (is_array($value)) {
+                $recipientSources[$key] = $value['model'];
+            }
+        }
+
         if (!in_array($recipientModelClass, $recipientSources)) {
             throw new Kwf_Exception("'$recipientModelClass' is not set in setting 'recipientSources' in '{$this->getData()->parent->componentClass}'");
         }
@@ -173,6 +193,11 @@ class Kwc_Mail_Redirect_Component extends Kwc_Abstract
     protected function _getRecipientModelClass($recipientShortcut)
     {
         $recipientSources = $this->getData()->parent->getComponent()->getRecipientSources();
+        foreach ($recipientSources as $key=>$value) {
+            if (is_array($value)) {
+                $recipientSources[$key] = $value['model'];
+            }
+        }
         if (!isset($recipientSources[$recipientShortcut])) {
             return null;
         }

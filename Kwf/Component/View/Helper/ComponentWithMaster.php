@@ -13,19 +13,29 @@ class Kwf_Component_View_Helper_ComponentWithMaster extends Kwf_Component_View_H
             $vars['component'] = $innerComponent;
             $vars['data'] = $innerComponent;
             $vars['componentWithMaster'] = $componentWithMaster;
-            $vars['cssClass'] = Kwc_Abstract::getCssClass($component->componentClass);
             $vars['boxes'] = array();
             foreach ($innerComponent->getPageOrRoot()->getChildBoxes() as $box) {
                 $vars['boxes'][$box->box] = $box;
             }
+            $vars['cssClass'] = 'frontend';
+            $cls = Kwc_Abstract::getSetting($component->componentClass, 'processedCssClass');
+            foreach (explode(' ', $cls) as $i) {
+                 $vars['cssClass'] .= ' master'.ucfirst($i);
+            }
 
             $view = new Kwf_Component_View($this->_getRenderer());
             $view->assign($vars);
-            return $view->render($this->_getRenderer()->getTemplate($component, 'Master'));
+            if (Kwc_Abstract::hasSetting($component->componentClass, 'masterTemplate')) {
+                $masterTemplate = Kwc_Abstract::getSetting($component->componentClass, 'masterTemplate');
+            } else {
+                $masterTemplate = $this->_getRenderer()->getTemplate($component, 'Master');
+            }
+            return $view->render($masterTemplate);
         } else if ($last['type'] == 'component') {
-            $plugins = self::_getGroupedViewPlugins($component->componentClass);
+            $helper = new Kwf_Component_View_Helper_Component();
+            $helper->setRenderer($this->_getRenderer());
             return '<div class="kwfMainContent">' . "\n    " .
-                $this->_getRenderPlaceholder($component->componentId, array(), null, 'component', $plugins) . "\n" .
+                $helper->component($component) . "\n" .
                 '</div>' . "\n";
         } else {
             throw new Kwf_Exception("invalid type");

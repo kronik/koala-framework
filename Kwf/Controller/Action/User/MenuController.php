@@ -10,7 +10,7 @@ class Kwf_Controller_Action_User_MenuController extends Kwf_Controller_Action
         if (empty($menus) && $this->_getUserRole() == 'guest') {
             $menu = array();
             $menu['type'] = 'commandDialog';
-            $menu['menuConfig']['text'] = 'Login';
+            $menu['menuConfig']['text'] = trlKwf('Login');
             $menu['commandClass'] = 'Kwf.User.Login.Dialog';
             $menus[] = $menu;
             $showLogout = false;
@@ -39,13 +39,15 @@ class Kwf_Controller_Action_User_MenuController extends Kwf_Controller_Action
         $this->view->frontendUrls = array();
         if (Kwf_Registry::get('acl')->has('kwf_component_pages')) {
             foreach (Kwc_Abstract::getComponentClasses() as $c) {
-                if (Kwc_Abstract::getFlag($c, 'hasDomain')) {
+                if (Kwc_Abstract::hasSetting($c, 'baseProperties') &&
+                    in_array('domain', Kwc_Abstract::getSetting($c, 'baseProperties'))
+                ) {
                     $domains = Kwf_Component_Data_Root::getInstance()
                         ->getComponentsBySameClass($c, array('ignoreVisible'=>true));
                     foreach ($domains as $domain)  {
                         if ($acl->getComponentAcl()->isAllowed($authData, $domain)) {
                             $this->view->frontendUrls[] = array(
-                                'href' => '/admin/component/preview?url='.urlencode($domain->getAbsoluteUrl()),
+                                'href' => Kwf_Setup::getBaseUrl().'/admin/component/preview?url='.urlencode($domain->getAbsoluteUrl()),
                                 'text' => $domain->name,
                             );
                         }
@@ -54,7 +56,7 @@ class Kwf_Controller_Action_User_MenuController extends Kwf_Controller_Action
             }
             if (!$this->view->frontendUrls) {
                 $this->view->frontendUrls[] = array(
-                    'href' => '/admin/component/preview',
+                    'href' => Kwf_Setup::getBaseUrl().'/admin/component/preview',
                     'text' => trlKwf('Frontend')
                 );
             }

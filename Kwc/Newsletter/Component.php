@@ -10,13 +10,13 @@ class Kwc_Newsletter_Component extends Kwc_Directories_ItemPage_Directory_Compon
         $ret['generators']['unsubscribe'] = array(
             'class' => 'Kwf_Component_Generator_Page_Static',
             'component' => 'Kwc_Newsletter_Unsubscribe_Component',
-            'name' => trlKwf('Unsubscribe')
+            'name' => trlKwfStatic('Unsubscribe')
         );
         // wird von der Mail_Redirect gerendered
         $ret['generators']['editSubscriber'] = array(
             'class' => 'Kwf_Component_Generator_Page_Static',
             'component' => 'Kwc_Newsletter_EditSubscriber_Component',
-            'name' => trlKwf('Edit subscriber')
+            'name' => trlKwfStatic('Edit subscriber')
         );
 
         $ret['childModel'] = 'Kwc_Newsletter_Model';
@@ -25,10 +25,12 @@ class Kwc_Newsletter_Component extends Kwc_Directories_ItemPage_Directory_Compon
         $ret['componentIcon'] = new Kwf_Asset('email');
 
         $ret['extConfig'] = 'Kwf_Component_Abstract_ExtConfig_None';
-        $ret['extConfigControllerIndex'] = 'Kwc_Directories_Item_Directory_ExtConfigEditButtons';
+        $ret['extConfigControllerIndex'] = 'Kwc_Newsletter_ExtConfigEditButtons';
+        $ret['assetsAdmin']['files'][] = 'kwf/Kwc/Newsletter/Panel.js';
 
         $ret['contentSender'] = 'Kwc_Newsletter_ContentSender';
 
+        $ret['menuConfig'] = 'Kwc_Newsletter_MenuConfig';
         return $ret;
     }
 }

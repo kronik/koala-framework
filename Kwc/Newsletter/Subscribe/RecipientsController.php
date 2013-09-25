@@ -6,7 +6,7 @@ class Kwc_Newsletter_Subscribe_RecipientsController extends Kwc_Newsletter_Subsc
     protected $_defaultOrder = 'id';
     protected $_paging = 20;
     protected $_queryFields = array('id', 'email', 'firstname', 'lastname');
-    protected $_modelName = 'Kwc_Newsletter_Subscribe_Model';
+    protected $_model = 'Kwc_Newsletter_Subscribe_Model';
 
     public function indexAction()
     {
@@ -15,7 +15,7 @@ class Kwc_Newsletter_Subscribe_RecipientsController extends Kwc_Newsletter_Subsc
             ->getControllerUrl('Recipient');
 
         $this->view->formControllerUrl = $formControllerUrl;
-        $this->view->xtype = 'kwc.newsletter.recipients';
+        $this->view->xtype = 'kwc.newsletter.subscribe.recipients';
         $this->view->model = get_class($this->_model);
         $this->view->baseParams = array(
             'newsletterComponentId' => $this->_getParam('newsletterComponentId')
@@ -36,6 +36,13 @@ class Kwc_Newsletter_Subscribe_RecipientsController extends Kwc_Newsletter_Subsc
 
     protected function _initColumns()
     {
+        if ($formControllerUrl = $this->_getParam('formControllerUrl')) {
+            $this->_editDialog = array(
+                'controllerUrl' => $formControllerUrl,
+                'width' => 500,
+                'height' => 250
+            );
+        }
         parent::_initColumns();
         $this->_filters['text'] = array(
             'type'=>'TextField',
@@ -69,6 +76,9 @@ class Kwc_Newsletter_Subscribe_RecipientsController extends Kwc_Newsletter_Subsc
         $ret = parent::_getSelect();
         if ($this->_model->hasColumn('newsletter_component_id')) {
             if ($this->_getParam('newsletterComponentId')) {
+                $acl = Kwf_Registry::get('acl')->getComponentAcl();
+                $c = Kwf_Component_Data_Root::getInstance()->getComponentById($this->_getParam('newsletterComponentId'), array('ignoreVisible'=>true, 'limit'=>1));
+                if (!$acl->isAllowed(Kwf_Registry::get('userModel')->getAuthedUser(), $c)) throw new Kwf_Exception_AccessDenied();
                 $ret->whereEquals('newsletter_component_id', $this->_getParam('newsletterComponentId'));
             } else {
                 $c = Kwf_Component_Data_Root::getInstance()->getComponentByDbId($this->_getParam('componentId'), array('ignoreVisible'=>true, 'limit'=>1));

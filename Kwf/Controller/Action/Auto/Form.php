@@ -16,7 +16,7 @@ abstract class Kwf_Controller_Action_Auto_Form extends Kwf_Controller_Action_Aut
         if ($this->_form->getProperties()) {
             $this->view->assign($this->_form->getProperties());
         }
-        $this->view->controllerUrl = $this->getRequest()->getPathInfo();
+        $this->view->controllerUrl = $this->getRequest()->getBaseUrl().$this->getRequest()->getPathInfo();
         $this->view->xtype = 'kwf.autoform';
     }
 
@@ -27,6 +27,7 @@ abstract class Kwf_Controller_Action_Auto_Form extends Kwf_Controller_Action_Aut
     public function preDispatch()
     {
         parent::preDispatch();
+        $t = microtime(true);
 
         if (!isset($this->_form)) {
             if (isset($this->_formName)) {
@@ -81,6 +82,8 @@ abstract class Kwf_Controller_Action_Auto_Form extends Kwf_Controller_Action_Aut
                 $this->_form->setId($this->_getParam($this->_form->getPrimaryKey()));
             }
         }
+
+        Kwf_Benchmark::subCheckpoint('init form', microtime(true)-$t);
     }
 
     public function jsonLoadAction()
@@ -146,7 +149,7 @@ abstract class Kwf_Controller_Action_Auto_Form extends Kwf_Controller_Action_Aut
             }
 
             if ($insert) {
-                $sessionFormId = new Zend_Session_Namespace('avoid_reinsert_id');
+                $sessionFormId = new Kwf_Session_Namespace('avoid_reinsert_id');
 
                 if ($this->_getParam('avoid_reinsert_id') &&
                     isset($sessionFormId->avoid[$this->_getParam('avoid_reinsert_id')])
@@ -184,7 +187,7 @@ abstract class Kwf_Controller_Action_Auto_Form extends Kwf_Controller_Action_Aut
 
             $this->view->data = $data;
 
-            $sessionFormId = new Zend_Session_Namespace('avoid_reinsert_id');
+            $sessionFormId = new Kwf_Session_Namespace('avoid_reinsert_id');
             if (!isset($sessionFormId->avoid)) {
                 $avoid = array();
             } else {

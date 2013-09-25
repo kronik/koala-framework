@@ -19,7 +19,7 @@ class Kwc_Articles_Directory_Model extends Kwf_Model_Db
         if ($authedUser) {
             $s = new Kwf_Model_Select();
             $s->whereEquals('user_id', $authedUser->id);
-            if ($authedUser->role == 'external') {
+            if ($authedUser->__get('role') == 'external') { // $authedUser->role throws error when role is an expression (PHP Bug?)
                 $this->_exprs['autheduser_visible'] = new Kwf_Model_Select_Expr_Not(new Kwf_Model_Select_Expr_Field('only_intern'));
             } else {
                 $this->_exprs['autheduser_visible'] = new Kwf_Model_Select_Expr_Boolean(true);
@@ -30,12 +30,16 @@ class Kwc_Articles_Directory_Model extends Kwf_Model_Db
         }
 
         $this->_exprs['date_year'] = new Kwf_Model_Select_Expr_Date_Year('date');
-        $this->_exprs['is_top'] = new Kwf_Model_Select_Expr_And(array(
-            new Kwf_Model_Select_Expr_Equal('is_top_checked', 1),
-            new Kwf_Model_Select_Expr_Or(array(
-                new Kwf_Model_Select_Expr_IsNull('is_top_expire'),
-                new Kwf_Model_Select_Expr_HigherEqual('is_top_expire', new Kwf_Date(mktime())),
+        $this->_exprs['is_top'] = new Kwf_Model_Select_Expr_If(
+            new Kwf_Model_Select_Expr_And(array(
+                new Kwf_Model_Select_Expr_Equal('is_top_checked', 1),
+                new Kwf_Model_Select_Expr_Or(array(
+                    new Kwf_Model_Select_Expr_IsNull('is_top_expire'),
+                    new Kwf_Model_Select_Expr_HigherEqual('is_top_expire', new Kwf_Date(mktime())),
+                )),
             )),
-        ));
+            new Kwf_Model_Select_Expr_String(1),
+            new Kwf_Model_Select_Expr_String(0)
+        );
     }
 }

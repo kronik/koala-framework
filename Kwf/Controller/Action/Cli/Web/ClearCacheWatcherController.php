@@ -21,10 +21,7 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
 
     public function indexAction()
     {
-        if (Kwf_Component_Cache_Memory::getInstance()->getBackend() instanceof Zend_Cache_Backend_Apc) {
-            throw new Kwf_Exception_Client("clear-cache-watcher is not compatible with component cache memory apc backend");
-        }
-        if (!Kwf_Cache_Simple::getZendCache()) { //false means apc cache
+        if (Kwf_Cache_Simple::getBackend() == 'apc') {
             throw new Kwf_Exception_Client("clear-cache-watcher is not compatible with simple cache apc backend");
         }
 
@@ -82,7 +79,7 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
             }
         }
 
-        $cmd = "inotifywait -e modify -e create -e delete -e move -e moved_to -e moved_from -r --monitor --exclude 'magick|\.nfs|\.git|.*\.kate-swp|~|cache|log|temp/|data/index' ".implode(' ', $watchPaths);
+        $cmd = "inotifywait -e modify -e create -e delete -e move -e moved_to -e moved_from -r --monitor --exclude 'magick|\.nfs|\.git|.*\.kate-swp|~|/cache/|/log/|/temp/|data/index|benchmarklog|querylog|eventlog' ".implode(' ', $watchPaths);
         echo $cmd."\n";
         $descriptorspec = array(
             1 => array("pipe", "w"),
@@ -183,6 +180,8 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
 
     private static function _handleEventFork($file, $event)
     {
+        Kwf_Cache_Simple::resetZendCache(); //reset to re-fetch namespace
+
         $eventStart = microtime(true);
         $pid = pcntl_fork();
         if ($pid == -1) {
@@ -252,9 +251,12 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
                 $section = 'web'; //TODO: where to get all possible sections?
                 $languages = Kwf_Trl::getInstance()->getLanguages();
                 foreach($languages as $language) {
-                    $cacheId = 'fileContents'.$language.$section.self::_getHostForCacheId();
-                        $cacheId .= str_replace(array('/', '.', '-', ':'), array('_', '_', '_', '_'), $section.'-'.$file);
-                        $cacheId .= Kwf_Component_Data_Root::getComponentClass();
+                    $cacheId  = 'fileContents'.$section;
+                    if (substr($file, -3) == '.js') {
+                        //cache javascript per language for trl calls and host for eg. Kwf_Assets_GoogleMapsApiKey
+                        $cacheId .= $language.self::_getHostForCacheId();
+                    }
+                    $cacheId .= str_replace(array('/', '\\', '.', '-', ':'), '_', $section.'-'.$file);
                     echo "remove from assets cache: $cacheId";
                     if (Kwf_Assets_Cache::getInstance()->remove($cacheId)) {
                         echo " [DELETED]";
@@ -309,11 +311,18 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
                 ));
                 echo "cleared apc config cache\n";
 
-                $cmd = "php bootstrap.php clear-cache --type=setup";
+                $cmd = Kwf_Config::getValue('server.phpCli')." bootstrap.php clear-cache --type=setup";
                 exec($cmd, $out, $ret);
                 echo "cleared setup.php cache";
                 if ($ret) echo " [FAILED]";
                 echo "\n";
+
+                echo "handled event in ".round((microtime(true)-$eventStart)*1000, 2)."ms\n";
+            }
+        } else if (preg_match('#Acl\.php$#', $file)) {
+            if ($event == 'MODIFY') {
+                Kwf_Acl::clearCache();
+                echo "cleared acl cache...\n";
 
                 echo "handled event in ".round((microtime(true)-$eventStart)*1000, 2)."ms\n";
             }
@@ -347,7 +356,7 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
                 return;
             }
 /*
-            $cmd = "php bootstrap.php clear-cache-watcher class-exists --class=$cls";
+            $cmd = Kwf_Config::getValue('server.phpCli')." bootstrap.php clear-cache-watcher class-exists --class=$cls";
             system($cmd, $classExists);
             if ($classExists != 0) {
                 echo "parse error: $cls\n";
@@ -467,7 +476,7 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
         if (isset($params['cacheIds']) && is_array($params['cacheIds'])) {
             $params['cacheIds'] = implode(',', $params['cacheIds']);
         }
-        Kwf_Util_Apc::callClearCacheByCli($params, Kwf_Util_Apc::VERBOSE);
+        Kwf_Util_Apc::callClearCacheByCli($params, array('outputFn' => 'printf'));
     }
 
     private static function _getComponentClassesFromGeneratorsSetting($generators)
@@ -493,6 +502,7 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
         $dependenciesChanged = false;
         $generatorssChanged = false;
         $dimensionsChanged = false;
+        $menuConfigChanged = false;
         foreach ($componentClasses as $c) {
             Kwf_Component_Settings::$_rebuildingSettings = true;
             if ($setting) {
@@ -518,6 +528,9 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
             if (isset($newSettings['dimensions']) && $newSettings['dimensions'] != $settings[$c]['dimensions']) {
                 $dimensionsChanged = true;
             }
+            if (isset($newSettings['menuConfig']) && $newSettings['menuConfig'] != $settings[$c]['menuConfig']) {
+                $menuConfigChanged = true;
+            }
             $settings[$c] = $newSettings;
         }
 
@@ -530,7 +543,6 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
             self::_clearAssetsAll();
         }
 
-        $clearCacheSimple = array();
         $clearCacheSimpleStatic = array(
             'has-', //Kwf_Component_Abstract::hasSetting
             'cs-', //Kwf_Component_Abstract::getSetting
@@ -544,7 +556,12 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
         if ($generatorssChanged) {
             echo "generators changed...\n";
             echo count(Kwc_Abstract::getComponentClasses())." component classes (previously)\n";
-            $clearCacheSimple[] = 'url-';
+
+            $m = Kwf_Component_Cache::getInstance()->getModel('url');
+            foreach ($m->getRows() as $r) {
+                Kwf_Cache_Simple::delete('url-'.$r->url);
+                $r->delete();
+            }
             foreach ($newChildComponentClasses as $cmpClass) {
                 if (!in_array($cmpClass, Kwc_Abstract::getComponentClasses())) {
                     self::_loadSettingsRecursive($settings, $cmpClass);
@@ -560,7 +577,6 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
         echo "cleared component settings apc cache...\n";
         self::_clearApcCache(array(
             'clearCacheSimpleStatic' => $clearCacheSimpleStatic,
-            '$clearCacheSimple' => $clearCacheSimple
         ));
 
         if ($dimensionsChanged) {
@@ -577,6 +593,11 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
             }
             Kwf_Cache_Simple::delete($clearCacheSimple);
             echo "cleared media cache...\n";
+        }
+        if ($menuConfigChanged) {
+            echo "menu config changed...\n";
+            Kwf_Acl::clearCache();
+            echo "cleared acl cache...\n";
         }
 
         $dependentComponentClasses = array();
@@ -642,10 +663,6 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
     private static function _getHostForCacheId()
     {
         $hostForCacheId = Kwf_Registry::get('config')->server->domain; //TODO all possible hosts
-        if (!$hostForCacheId && file_exists('cache/lastdomain')) {
-            //this file gets written in Kwf_Setup to make it "just work"
-            $hostForCacheId = file_get_contents('cache/lastdomain');
-        }
         if (preg_match('#[^\.]+\.[^\.]+$#', $hostForCacheId, $m)) {
             $hostForCacheId = $m[0];
         }
@@ -653,55 +670,39 @@ class Kwf_Controller_Action_Cli_Web_ClearCacheWatcherController extends Kwf_Cont
         return $hostForCacheId;
     }
 
-
-    private static function _getAssetsTypes()
-    {
-        $ret = array();
-        $assetsTypes = array_keys(Kwf_Registry::get('config')->assets->toArray());
-        foreach ($assetsTypes as $assetsType) {
-            if ($assetsType == 'dependencies') continue;
-            $ret[] = $assetsType;
-        }
-        return $ret;
-    }
-
     private static function _clearAssetsDependencies()
     {
-        $rootComponent = Kwf_Component_Data_Root::getComponentClass();
-        foreach (self::_getAssetsTypes() as $assetsType) {
-            $cacheId = 'dependencies'.str_replace(':', '_', $assetsType).$rootComponent;
-            echo "remove from assets cache: $cacheId";
-            if (Kwf_Assets_Cache::getInstance()->remove($cacheId)) {
-                echo " [DELETED]";
+        if (file_exists('cache/assets/generated-dependencies')) {
+            foreach (file('cache/assets/generated-dependencies') as $cacheId) {
+                echo trim($cacheId);
+                if (Kwf_Assets_Cache::getInstance()->remove(trim($cacheId))) {
+                    echo " [DELETED]";
+                }
+                echo "\n";
             }
-            echo "\n";
+            unlink('cache/assets/generated-dependencies');
         }
     }
 
-    private static function _clearAssetsAll($fileTypes = null)
+    private static function _clearAssetsAll($fileType = null)
     {
-        if (is_null($fileTypes)) $fileTypes = array('js', 'css', 'printcss');
-        if (is_string($fileTypes)) $fileTypes = array($fileTypes);
-
-        $section = 'web'; //TODO: where to get all possible sections?
-        $languages = Kwf_Trl::getInstance()->getLanguages();
-        $rootComponent = Kwf_Component_Data_Root::getComponentClass();
-        foreach($languages as $language) {
-            foreach ($fileTypes as $fileType) {
-                foreach (self::_getAssetsTypes() as $assetsType) {
-                    foreach (array('none', 'gzip', 'deflate') as $encoding) {
-                        $allFile = "all/$section/"
-                                .($rootComponent?$rootComponent.'/':'')
-                                ."$language/$assetsType.$fileType";
-                        $cacheId = md5($allFile.$encoding.self::_getHostForCacheId());
-                        echo "remove from assets cache: $cacheId (".$allFile.$encoding.self::_getHostForCacheId().")";
-                        if (Kwf_Assets_Cache::getInstance()->remove($cacheId)) {
-                            echo " [DELETED]";
-                        }
-                        echo "\n";
+        if (file_exists('cache/assets/generated-all')) {
+            $notDeletedCacheIds = array();
+            foreach (file('cache/assets/generated-all') as $cacheId) {
+                $cacheId = trim($cacheId);
+                if ($fileType) {
+                    if (!preg_match('#_'.$fileType.'_enc#', $cacheId)) {
+                        $notDeletedCacheIds[] = $cacheId;
+                        continue;
                     }
                 }
+                echo $cacheId;
+                if (Kwf_Assets_Cache::getInstance()->remove($cacheId)) {
+                    echo " [DELETED]";
+                }
+                echo "\n";
             }
+            file_put_contents('cache/assets/generated-all', implode("\n", $notDeletedCacheIds)."\n");
         }
     }
 }

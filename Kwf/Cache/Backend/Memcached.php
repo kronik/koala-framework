@@ -7,8 +7,8 @@ class Kwf_Cache_Backend_Memcached extends Zend_Cache_Backend_Memcached
     {
         if (!isset($options['servers'])) {
             $options['servers'] = array(array(
-                'host' => Kwf_Config::getValue('server.memcache.host'),
-                'port' => Kwf_Config::getValue('server.memcache.port')
+                'host' => Kwf_Cache_Simple::$memcacheHost,
+                'port' => Kwf_Cache_Simple::$memcachePort
             ));
         }
         foreach ($options['servers'] as &$s) {
@@ -86,6 +86,28 @@ class Kwf_Cache_Backend_Memcached extends Zend_Cache_Backend_Memcached
         $id = $this->_processId($id);
         try {
             return parent::load($id, $doNotTestCacheValidity);
+        } catch (ErrorException $e) {
+            if ($e->getSeverity() == E_NOTICE) {
+                $e = new Kwf_Exception_Other($e);
+                $e->logOrThrow();
+                return false;
+            }
+            throw $e;
+        }
+    }
+
+    public function loadWithMetadata($id, $doNotTestCacheValidity = false)
+    {
+        $id = $this->_processId($id);
+        try {
+            $tmp = $this->_memcache->get($id);
+            if (is_array($tmp) && isset($tmp[0])) {
+                return array(
+                    'contents' => $tmp[0],
+                    'expire' => $tmp[2] ? ($tmp[1] + $tmp[2]) : null, //mtime + lifetime
+                );
+            }
+            return false;
         } catch (ErrorException $e) {
             if ($e->getSeverity() == E_NOTICE) {
                 $e = new Kwf_Exception_Other($e);
@@ -186,7 +208,7 @@ class Kwf_Cache_Backend_Memcached extends Zend_Cache_Backend_Memcached
 
     protected function _processId($id)
     {
-        $id = md5($this->_getCacheIdPrefix().$id);
+        $id = $this->_getCacheIdPrefix().$id;
         return $id;
     }
 
@@ -197,4 +219,8 @@ class Kwf_Cache_Backend_Memcached extends Zend_Cache_Backend_Memcached
         return $ret;
     }
 
+    public function getMemcache()
+    {
+        return $this->_memcache;
+    }
 }

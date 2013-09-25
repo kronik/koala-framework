@@ -58,6 +58,7 @@ Kwf.Connection = Ext.extend(Ext.data.Connection, {
         }
         if (!options.params) options.params = {};
         options.params.application_max_assets_mtime = Kwf.application.maxAssetsMTime;
+        if (Kwf.sessionToken) options.params.kwfSessionToken = Kwf.sessionToken;
         if (!options.url.match(':\/\/')) {
             //absolute url incl. http:// erstellen
             //wird benötigt wenn fkt über mozrepl aufgerufen wird
@@ -238,15 +239,6 @@ Kwf.Connection = Ext.extend(Ext.data.Connection, {
         } catch(e) {
             errorMsg = e.toString()+': <br />'+response.responseText;
             var errorMsgTitle = 'Javascript Parse Exception';
-        }
-        if (Kwf.Debug.querylog && r && r.requestNum) {
-            var rm = location.protocol + '/'+'/' + location.host;
-            var url = options.url;
-            if (url.substr(0, rm.length) == rm) {
-                url = url.substr(rm.length);
-            }
-            var data = [[new Date(), url, encParams, r.requestNum]];
-            Kwf.Debug.requestsStore.loadData(data, true);
         }
         if (!errorMsg && r.exception) {
             var p;

@@ -226,24 +226,6 @@ Kwf.Menu.Index = Ext.extend(Ext.Toolbar,
             });
         }
 
-        if (Kwf.Debug.showMenu) {
-            this.userToolbar.add('-');
-            this.userToolbar.add({
-                cls: 'x-btn-icon',
-                icon: '/assets/silkicons/bug.png',
-                menu: new Kwf.Debug.Menu()
-            });
-        } else if (Kwf.Debug.showActivator) {
-            this.userToolbar.add('-');
-            this.userToolbar.add({
-                tooltip: 'Activate Debugging',
-                cls: 'x-btn-icon',
-                icon: '/assets/silkicons/bug.png',
-                handler: function() {
-                    location.href = '/kwf/debug/activate?url=' + location.href;
-                }
-            });
-        }
         this.userToolbar.hide();
 
         if (result.frontendUrls.length == 1) {

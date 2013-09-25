@@ -18,14 +18,14 @@ class Kwf_Component_Plugin_AccessByMail_Component extends Kwf_Component_Plugin_A
         $data = Kwf_Component_Data_Root::getInstance()
             ->getComponentById($this->_componentId);
         while (!$ret && $data) {
-            $session = new Zend_Session_Namespace('kwc_'.$data->componentId);
+            $session = new Kwf_Session_Namespace('kwc_'.$data->componentId);
             $ret = $session->login;
             $data = $data->parent;
         }
         return $ret;
     }
 
-    public function replaceOutput()
+    public function replaceOutput($renderer)
     {
         if ($this->isLoggedIn()) {
             return false;

@@ -1,10 +1,10 @@
 <?php
-class Kwf_Benchmark_Counter_Apc implements Kwf_Benchmark_Counter_Interface
+class Kwf_Benchmark_Counter_Apc
 {
     public function increment($name, $value=1)
     {
         static $prefix;
-        if (!isset($prefix)) $prefix = Kwf_Cache::getUniquePrefix().'bench-';
+        if (!isset($prefix)) $prefix = Kwf_Cache_Simple::getUniquePrefix().'bench-';
         apc_inc($prefix.$name, $value, $success);
         if (!$success) {
             apc_add($prefix.$name, $value);
@@ -13,10 +13,13 @@ class Kwf_Benchmark_Counter_Apc implements Kwf_Benchmark_Counter_Interface
 
     public function getValue($name)
     {
-        $d = Kwf_Registry::get('config')->server->domain;
-        $pwd = Kwf_Util_Apc::getHttpPassword();
-        $url = "http://apcutils:$pwd@$d/kwf/util/apc/get-counter-value?name=".rawurlencode($name);
-        return (int)file_get_contents($url);
+        if (php_sapi_name() == 'cli') {
+            return (int)Kwf_Util_Apc::callUtil('get-counter-value', array('name'=>$name), array('returnBody'=>true));
+        } else {
+            static $prefix;
+            if (!isset($prefix)) $prefix = Kwf_Cache_Simple::getUniquePrefix().'bench-';
+            return (int)apc_fetch($prefix.$name);
+        }
     }
 
 }

@@ -1,10 +1,17 @@
 <div class="<?=$this->cssClass?>">
-    <span class="beforeButton"></span>
-    <span class="button">
-        <div class="newEntry">
+    <? if ($this->write) { ?>
+        <div class="write">
             <?=$this->componentLink($this->write, $this->placeholder['writeText'])?>
         </div>
-    </span>
-    <span class="afterButton"></span>
-    <?=$this->component($this->view)?>
+    <? } ?>
+
+    <div class="comments">
+        <?=$this->component($this->view)?>
+    </div>
+
+    <? if ($this->quickwrite) { ?>
+        <div class="quickwrite">
+            <?=$this->component($this->quickwrite)?>
+        </div>
+    <? } ?>
 </div>

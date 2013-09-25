@@ -1,22 +1,15 @@
 .kwcForm div.kwfFormFieldMultiCheckboxVertical { 
-    float: left;
+    display: inline-block;
     position: relative;
 }
 
 
 .kwcForm div.kwcFormFieldMultiCheckbox .checkboxItem input {
-    float: left;
-    width: 30px;
+    display: inline-block;
+    float: none;
 }
 
 .kwcForm div.kwcFormFieldMultiCheckbox .checkboxItem label {
-    float: left;
-    clear: none;
-    min-width: 300px;
-    text-align: left;
-    margin-top: -3px;
-}
-
-.kwcForm div.kwfFormFieldMultiCheckboxHorizontal .checkboxItem label.boxLabel {
-    min-width: 0px;
+    display: inline-block;
+    float: none;
 }

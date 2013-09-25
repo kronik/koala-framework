@@ -762,13 +762,19 @@ class Kwf_Model_Db extends Kwf_Model_Abstract
         ));
     }
 
-    public function getIds($where = array(), $order=null, $limit=null, $start=null)
+    public function getIds($select = array(), $order=null, $limit=null, $start=null)
     {
-        $dbSelect = $this->_getDbSelect($where, $order, $limit, $start);
-        $id = $this->getPrimaryKey();
+        if (!is_object($select)) {
+            $select = $this->select($select, $order, $limit, $start);
+        }
+        $rows = $this->export(
+            Kwf_Model_Abstract::FORMAT_ARRAY,
+            $select,
+            array('columns'=>array($this->getPrimaryKey()))
+        );
         $ret = array();
-        foreach ($this->getTable()->fetchAll($dbSelect) as $row) {
-            $ret[] = $row->$id;
+        foreach ($rows as $i) {
+            $ret[] = $i[$this->getPrimaryKey()];
         }
         return $ret;
     }
@@ -807,8 +813,9 @@ class Kwf_Model_Db extends Kwf_Model_Abstract
 
     public function deleteRows($where)
     {
-        return $this->getTable()->delete($this->_getTableUpdateWhere($where));
+        $ret = $this->getTable()->delete($this->_getTableUpdateWhere($where));
         $this->_afterDeleteRows($where);
+        return $ret;
     }
 
     public function updateRows($data, $where)

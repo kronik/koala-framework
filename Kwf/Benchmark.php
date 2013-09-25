@@ -4,6 +4,7 @@ class Kwf_Benchmark
     private static $_enabled = false;
     private static $_logEnabled = false;
     protected static $_counter = array();
+    protected static $_counterLog = array();
     public static $benchmarks = array();
     private static $_checkpoints = array();
     private static $_subCheckpoints = array();
@@ -48,6 +49,11 @@ class Kwf_Benchmark
         self::$_logEnabled = true;
     }
 
+    public static function isLogEnabled()
+    {
+        return self::$_logEnabled;
+    }
+
     public static function isEnabled()
     {
         return self::$_enabled;
@@ -56,6 +62,10 @@ class Kwf_Benchmark
     public static function reset()
     {
         self::$_counter = array();
+        self::$_counterLog = array();
+        self::$_checkpoints = array();
+        self::$_subCheckpoints = array();
+        self::$startTime = microtime(true);
     }
     public static function getCounterValue($name)
     {
@@ -66,7 +76,7 @@ class Kwf_Benchmark
     }
     public static function count($name, $value = null)
     {
-        if (!self::$_enabled && !self::$_logEnabled) return false;
+        if (!self::$_enabled) return false;
 
         self::_countArray(self::$_counter, $name, $value);
 
@@ -79,7 +89,7 @@ class Kwf_Benchmark
 
     public static function countBt($name, $value = null)
     {
-        if (!self::$_enabled && !self::$_logEnabled) return false;
+        if (!self::$_enabled) return false;
 
         self::_countArray(self::$_counter, $name, $value, true);
 
@@ -88,6 +98,13 @@ class Kwf_Benchmark
                 self::_countArray($b->counter, $name, $value, true);
             }
         }
+    }
+
+    public static function countLog($name)
+    {
+        if (!self::$_logEnabled) return;
+
+        self::_countArray(self::$_counterLog, $name, null);
     }
 
     private static function _countArray(&$counter, $name, $value, $backtrace = false)
@@ -132,68 +149,144 @@ class Kwf_Benchmark
 
     public static function output()
     {
-        Kwf_Benchmark::checkpoint('shutDown');
+        self::shutDown();
 
-        if (isset($_COOKIE['unitTest'])) return;
         if (!self::$_enabled) return;
         self::disable();
         self::$_logEnabled = false;
-        if (PHP_SAPI != 'cli') {
+
+        $execTime = microtime(true) - self::$startTime;
+        if (function_exists('memory_get_peak_usage')) {
+            $memoryUsage = memory_get_peak_usage();
+        } else {
+            $memoryUsage = memory_get_usage();
+        }
+        $load = @file_get_contents('/proc/loadavg');
+        $load = explode(' ', $load);
+        $load = $load[0];
+
+        $benchmarkOutput = array();
+        if ($execTime < 1) {
+            $benchmarkOutput[] = round($execTime*1000)." msec";
+        } else {
+            $benchmarkOutput[] = round($execTime, 3)." sec";
+        }
+        if ($load) $benchmarkOutput[] = "Load: ". $load;
+        $benchmarkOutput[] = "Memory: ".round($memoryUsage/1024)." kb";
+        if (Zend_Registry::get('dao') && Zend_Registry::get('dao')->hasDb() && Zend_Registry::get('db')) {
+            if (Zend_Registry::get('db')->getProfiler() && method_exists(Zend_Registry::get('db')->getProfiler(), 'getQueryCount')) {
+                $benchmarkOutput[] = "DB-Queries: ".Zend_Registry::get('db')->getProfiler()->getQueryCount();
+            } else {
+                $benchmarkOutput[] = "DB-Queries: (no profiler used)";
+            }
+        } else {
+            $benchmarkOutput[] = "DB-Queries: (none)";
+        }
+        if (PHP_SAPI != 'cli' && (Kwf_Config::getValue('debug.benchmark') || isset($_REQUEST['KWF_BENCHMARK']))) {
             echo '<div class="outerBenchmarkBox">';
             echo '<div class="innerBenchmarkBox">';
-            $t = microtime(true) - self::$startTime;
-            if ($t < 1) {
-                echo round($t*1000)." msec<br />\n";
-            } else {
-                echo round($t, 3)." sec<br />\n";
+            foreach ($benchmarkOutput as $line) {
+                echo "$line<br />\n";
             }
-            $load = @file_get_contents('/proc/loadavg');
-            $load = explode(' ', $load);
-            echo "Load: ". $load[0]."<br />\n";
-            if (function_exists('memory_get_peak_usage')) {
-                echo "Memory: ".round(memory_get_peak_usage()/1024)." kb<br />\n";
-            } else {
-                echo "Memory: ".round(memory_get_usage()/1024)." kb<br />\n";
-            }
-            if (Zend_Registry::get('dao') && Zend_Registry::get('dao')->hasDb() && Zend_Registry::get('db')) {
-                if (Zend_Registry::get('db')->getProfiler() && method_exists(Zend_Registry::get('db')->getProfiler(), 'getQueryCount')) {
-                    echo "DB-Queries: ".Zend_Registry::get('db')->getProfiler()->getQueryCount()."<br />\n";
-                } else {
-                    echo "DB-Queries: (no profiler used)<br />\n";
+        }
+        if (Kwf_Config::getValue('debug.benchmarklog')) {
+            $out = date('Y-m-d H:i:s')."\n";
+            $out .= Kwf_Setup::getRequestPath()."\n";
+            $out .= implode("\n", $benchmarkOutput)."\n";
+            file_put_contents('benchmarklog', $out);
+        }
+
+        if ((Kwf_Config::getValue('debug.benchmark') || isset($_REQUEST['KWF_BENCHMARK'])) && PHP_SAPI != 'cli') {
+            echo self::_getCounterOutput(self::$_counter, true);
+            if (self::$benchmarks) {
+                echo "<br /><b>Benchmarks:</b><br/>";
+                foreach (self::$benchmarks as $i) {
+                    echo "<a style=\"display:block;\" href=\"#\" onclick=\"if(this.nextSibling.nextSibling.style.display=='none') { this.open=true; this.nextSibling.nextSibling.style.display='block'; this.nextSibling.style.display=''; } else { this.open=false; this.nextSibling.nextSibling.style.display='none';this.nextSibling.style.display='none'; } return(false); }\"
+                                                                onmouseover=\"if(!this.open) this.nextSibling.style.display=''\"
+                                                                onmouseout=\"if(!this.open) this.nextSibling.style.display='none'\">";
+                    echo "{$i->identifier} (".round($i->duration, 3)." sec)</a>";
+                    echo "<div style=\"display:none;margin-left:10px\">";
+                    echo $i->addInfo."<br/>";
+                    echo implode('<br />', $i->getOutput());
+                    echo "</div>";
+                    echo "<div style=\"display:none;margin-left:10px\">";
+                    echo self::_getCounterOutput($i->counter, true);
+                    echo "</div>";
                 }
-            } else {
-                echo "DB-Queries: (none)<br />\n";
             }
         }
-        self::_outputCounter(self::$_counter);
-        if (self::$benchmarks && PHP_SAPI != 'cli') {
-            echo "<br /><b>Benchmarks:</b><br/>";
-            foreach (self::$benchmarks as $i) {
-                echo "<a style=\"display:block;\" href=\"#\" onclick=\"if(this.nextSibling.nextSibling.style.display=='none') { this.open=true; this.nextSibling.nextSibling.style.display='block'; this.nextSibling.style.display=''; } else { this.open=false; this.nextSibling.nextSibling.style.display='none';this.nextSibling.style.display='none'; } return(false); }\"
-                                                            onmouseover=\"if(!this.open) this.nextSibling.style.display=''\"
-                                                            onmouseout=\"if(!this.open) this.nextSibling.style.display='none'\">";
-                echo "{$i->identifier} (".round($i->duration, 3)." sec)</a>";
-                echo "<div style=\"display:none;margin-left:10px\">";
-                echo $i->addInfo."<br/>";
-                echo implode('<br />', $i->getOutput());
-                echo "</div>";
-                echo "<div style=\"display:none;margin-left:10px\">";
-                self::_outputCounter($i->counter);
-                echo "</div>";
+
+        if (Kwf_Config::getValue('debug.benchmarklog')) {
+            $out = self::_getCounterOutput(self::$_counter, false);
+            if (self::$benchmarks) {
+                $out .= "\nBenchmarks:\n";
+                foreach (self::$benchmarks as $i) {
+                    $out .= "{$i->identifier} (".round($i->duration, 3)." sec)\n";
+                    $out .= "    ".$i->addInfo."\n";
+                    $out .= implode("\n    ", $i->getOutput());
+                    $out .= self::_getCounterOutput($i->counter, true);
+                    $out .= "\n";
+                }
             }
+            file_put_contents('benchmarklog', $out, FILE_APPEND);
         }
-        echo "<table style=\"font-size: 10px\">";
-        echo "<tr><th>ms</th><th>%</th><th>Checkpoint</th></tr>";
+
+
+        if ((Kwf_Config::getValue('debug.benchmark') || isset($_REQUEST['KWF_BENCHMARK'])) && PHP_SAPI != 'cli') {
+            echo "<table style=\"font-size: 10px\">";
+            echo "<tr><th>ms</th><th>%</th><th>Checkpoint</th></tr>";
+            $sum = 0;
+            foreach (self::$_checkpoints as $checkpoint) {
+                $sum += $checkpoint[0];
+            }
+            foreach (self::$_checkpoints as $i=>$checkpoint) {
+                echo "<tr>";
+                echo "<td>".round($checkpoint[0]*1000)."</td>";
+                echo "<td>".round(($checkpoint[0]/$sum)*100)."</td>";
+                echo "<td>".$checkpoint[1]."</td>";
+                echo "</tr>";
+                if (isset(self::$_subCheckpoints[$i])) {
+                    $subCheckpoints = array();
+                    foreach (self::$_subCheckpoints[$i] as $cp) {
+                        $subCheckpoints[0][] = $cp[0];
+                        $subCheckpoints[1][] = $cp[1];
+                    }
+                    array_multisort($subCheckpoints[0], SORT_DESC, SORT_NUMERIC, $subCheckpoints[1]);
+                    foreach (array_keys($subCheckpoints[0]) as $k) {
+                        $percent = ($subCheckpoints[0][$k]/$sum)*100;
+                        if ($percent > 1) {
+                            echo "<tr>";
+                            echo "<td>".round($subCheckpoints[0][$k]*1000)."</td>";
+                            echo "<td>".round($percent)."</td>";
+                            echo "<td>&nbsp;&nbsp;".$subCheckpoints[1][$k]."</td>";
+                            echo "</tr>";
+                        }
+                    }
+                }
+            }
+            echo "</table>";
+            echo "</div>";
+            echo "</div>";
+        }
+        if (Kwf_Config::getValue('debug.benchmarklog')) {
+            $out = "\n".self::getCheckpointOutput();
+            file_put_contents('benchmarklog', $out, FILE_APPEND);
+        }
+    }
+
+    public static function getCheckpointOutput()
+    {
+        $out = "  ms  % Checkpoint\n";
         $sum = 0;
         foreach (self::$_checkpoints as $checkpoint) {
             $sum += $checkpoint[0];
         }
         foreach (self::$_checkpoints as $i=>$checkpoint) {
-            echo "<tr>";
-            echo "<td>".round($checkpoint[0]*1000)."</td>";
-            echo "<td>".round(($checkpoint[0]/$sum)*100)."</td>";
-            echo "<td>".$checkpoint[1]."</td>";
-            echo "</tr>";
+            $ms = round($checkpoint[0]*1000);
+            $out .= str_pad(round($checkpoint[0]*1000), 4, ' ', STR_PAD_LEFT);
+            $out .= str_pad(round(($checkpoint[0]/$sum)*100), 3, ' ', STR_PAD_LEFT);
+            $out .= " ".$checkpoint[1]."";
+            $out .= "\n";
             if (isset(self::$_subCheckpoints[$i])) {
                 $subCheckpoints = array();
                 foreach (self::$_subCheckpoints[$i] as $cp) {
@@ -204,96 +297,72 @@ class Kwf_Benchmark
                 foreach (array_keys($subCheckpoints[0]) as $k) {
                     $percent = ($subCheckpoints[0][$k]/$sum)*100;
                     if ($percent > 1) {
-                        echo "<tr>";
-                        echo "<td>".round($subCheckpoints[0][$k]*1000)."</td>";
-                        echo "<td>".round($percent)."</td>";
-                        echo "<td>&nbsp;&nbsp;".$subCheckpoints[1][$k]."</td>";
-                        echo "</tr>";
+                        $out .= ' '.str_pad(round($subCheckpoints[0][$k]*1000), 4, ' ', STR_PAD_LEFT);
+                        $out .= str_pad(round($percent), 3, ' ', STR_PAD_LEFT);
+                        $out .= '  '.$subCheckpoints[1][$k];
+                        $out .= "\n";
                     }
                 }
             }
         }
-        echo "</table>";
-        if (PHP_SAPI != 'cli') {
-            echo "</div>";
-            echo "</div>";
-        }
+        return $out;
     }
-    private static function _outputCounter($counter)
+
+    private static function _getCounterOutput($counter, $useHtml)
     {
-        echo "\n";
+        $ret = "\n";
         if (!is_array($counter)) return;
         foreach ($counter as $k=>$i) {
             if (is_array($i)) {
-                if (PHP_SAPI != 'cli') {
-                    echo "<a style=\"display:block;\" href=\"#\" onclick=\"if(this.nextSibling.style.display=='none') this.nextSibling.style.display='block'; else this.nextSibling.style.display='none';return(false);\">";
-                    echo "$k: ".count($i)."</a>";
-                    echo "<ul style=\"display:none\">";
+                if ($useHtml) {
+                    $ret .= "<a style=\"display:block;\" href=\"#\" onclick=\"if(this.nextSibling.style.display=='none') this.nextSibling.style.display='block'; else this.nextSibling.style.display='none';return(false);\">";
+                    $ret .= "$k: ".count($i)."</a>";
+                    $ret .= "<ul style=\"display:none\">";
                     foreach ($i as $j) {
-                        echo "<li>";
+                        $ret .= "<li>";
                         if ($j['bt']) {
-                            echo "<strong style=\"font-weight:bold\">{$j['value']}</strong><br />{$j['bt']}";
+                            $ret .= "<strong style=\"font-weight:bold\">{$j['value']}</strong><br />{$j['bt']}";
                         } else {
-                            echo $j['value'];
+                            $ret .= $j['value'];
                         }
-                        echo "</li>";
+                        $ret .= "</li>";
                     }
-                    echo "</ul>";
+                    $ret .= "</ul>";
                 } else {
-                    echo "$k: (".count($i).') ';
+                    $ret .= "$k: (".count($i).') ';
+                    $len = '';
                     foreach ($i as $j) {
-                        echo $j['value'].' ';
+                        $v = $j['value'].' ';
+                        $len += strlen($v);
+                        if ($len > 1000) {
+                            $ret .= "\n    ";
+                            $len = 0;
+                        }
+                        $ret .= $v;
                     }
-                    echo "\n";
+                    $ret = trim($ret);
+                    $ret .= "\n";
                 }
             } else {
-                if (PHP_SAPI != 'cli') {
-                    echo "$k: $i<br />\n";
+                if ($useHtml) {
+                    $ret .= "$k: $i<br />\n";
                 } else {
-                    echo "$k: $i\n";
+                    $ret .= "$k: $i\n";
                 }
             }
         }
-    }
-
-    public static function info($msg)
-    {
-        if (!self::$_enabled) return;
-        if (Kwf_Config::getValue('debug.firephp') && class_exists('FirePHP') && FirePHP::getInstance() && FirePHP::getInstance()->detectClientExtension()) {
-            p($msg, 'INFO');
-        }
-    }
-
-    public static function cacheInfo($msg)
-    {
-        if (!Kwf_Config::getValue('debug.componentCache.info')) return;
-        if (Kwf_Config::getValue('debug.firephp') && class_exists('FirePHP') && FirePHP::getInstance() && FirePHP::getInstance()->detectClientExtension()) {
-            p($msg, 'INFO');
-        }
+        return $ret;
     }
 
     final public static function shutDown()
     {
-        Kwf_Benchmark::checkpoint('shutDown');
-
-        if (function_exists('xhprof_disable') && file_exists('/www/public/niko/xhprof')) {
-            //TODO irgendwie intelligenter aktivieren/deaktivieren
-            $xhprof_data = xhprof_disable();
-            if ($xhprof_data) {
-                $XHPROF_ROOT = '/www/public/niko/xhprof';
-                include_once $XHPROF_ROOT . "/xhprof_lib/utils/xhprof_lib.php";
-                include_once $XHPROF_ROOT . "/xhprof_lib/utils/xhprof_runs.php";
-                $xhprof_runs = new XHProfRuns_Default();
-                $run_id = $xhprof_runs->save_run($xhprof_data, "xhprof_benchmark");
-                echo "http://xhprof.niko.vivid/xhprof_html/index.php?run=$run_id&source=xhprof_benchmark";
-            }
-        }
-
-        if (!self::$_logEnabled) return;
-
         static $wasCalled = false;
         if ($wasCalled) return;
         $wasCalled = true;
+
+        Kwf_Benchmark::checkpoint('shutDown');
+
+        if (!self::$_logEnabled) return;
 
         self::_getInstance()->_shutDown();
     }
@@ -305,16 +374,17 @@ class Kwf_Benchmark
 
     protected function _getUrlType()
     {
+        $prefixLen = strlen(Kwf_Setup::getBaseUrl());
         if (!isset($_SERVER['REQUEST_URI'])) {
             if (php_sapi_name() == 'cli') $urlType = 'cli';
             else $urlType = 'unknown';
-        } else if (substr($_SERVER['REQUEST_URI'], 0, 8) == '/assets/') {
+        } else if (substr($_SERVER['REQUEST_URI'], $prefixLen, 8) == '/assets/') {
             $urlType = 'asset';
-        } else if (substr($_SERVER['REQUEST_URI'], 0, 7) == '/media/') {
+        } else if (substr($_SERVER['REQUEST_URI'], $prefixLen, 7) == '/media/') {
             $urlType = 'media';
-        } else if (substr($_SERVER['REQUEST_URI'], 0, 7) == '/admin/') {
+        } else if (substr($_SERVER['REQUEST_URI'], $prefixLen, 7) == '/admin/') {
             $urlType = 'admin';
-        } else if (substr($_SERVER['REQUEST_URI'], 0, 5) == '/kwf/') {
+        } else if (substr($_SERVER['REQUEST_URI'], $prefixLen, 5) == '/kwf/') {
             $urlType = 'admin';
         } else {
             $urlType = 'content';
@@ -324,15 +394,13 @@ class Kwf_Benchmark
 
     protected function _shutDown()
     {
-        if ($this->_getUrlType() == 'asset' && !self::$_counter) return;
-        $prefix = $this->_getUrlType().'-';
+        $urlType = $this->_getUrlType();
+        if ($urlType == 'asset' && !self::$_counterLog) return;
+        $prefix = $urlType.'-';
         $this->_memcacheCount($prefix.'requests', 1);
-        foreach (self::$_counter as $name=>$value) {
-            if (is_array($value)) $value = count($value);
-            $this->_memcacheCount($prefix.$name, $value);
+        foreach (self::$_counterLog as $name=>$value) {
+            $this->_memcacheCount($name, $value);
         }
-        $value = (int)((microtime(true) - self::$startTime)*1000);
-        $this->_memcacheCount($prefix.'duration', $value);
     }
 
     private function _memcacheCount($name, $value)

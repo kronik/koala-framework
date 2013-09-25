@@ -79,8 +79,14 @@ class Kwf_Component_Abstract_ContentSender_Default extends Kwf_Component_Abstrac
         $process = array();
         foreach ($datas as $d) {
             foreach ($d['plugins'] as $p) {
-                $p = Kwf_Component_Plugin_Abstract::getInstance($p['pluginClass'], $p['componentId']);
-                if ($p->skipProcessInput()) {
+                $plugin = Kwf_Component_Plugin_Abstract::getInstance($p['pluginClass'], $p['componentId']);
+                $result = $plugin->skipProcessInput();
+                if ($result === Kwf_Component_Plugin_Interface_SkipProcessInput::SKIP_SELF_AND_CHILDREN) {
+                    continue 2;
+                }
+                if ($result === Kwf_Component_Plugin_Interface_SkipProcessInput::SKIP_SELF &&
+                    $p['componentId'] == $d['data']->componentId
+                ) {
                     continue 2;
                 }
             }
@@ -97,22 +103,27 @@ class Kwf_Component_Abstract_ContentSender_Default extends Kwf_Component_Abstrac
                     'page' => false,
                     'flags' => array('processInput' => true)
                 ));
+        $process = array_merge($process, $data
+            ->getRecursiveChildComponents(array(
+                    'page' => false,
+                    'flags' => array('forwardProcessInput' => true)
+                )));
         if (Kwf_Component_Abstract::getFlag($data->componentClass, 'processInput')) {
             $process[] = $data;
         }
-
-        // TODO: Äußerst suboptimal
-        if (is_instance_of($data->componentClass, 'Kwc_Show_Component')) {
-            $process += $data->getComponent()->getShowComponent()
-                ->getRecursiveChildComponents(array(
-                    'page' => false,
-                    'flags' => array('processInput' => true)
-                ));
-            if (Kwf_Component_Abstract::getFlag(get_class($data->getComponent()->getShowComponent()->getComponent()), 'processInput')) {
-                $process[] = $data;
+        if (Kwf_Component_Abstract::getFlag($data->componentClass, 'forwardProcessInput')) {
+            $process[] = $data;
+        }
+        $ret = array();
+        foreach ($process as $i) {
+            if (Kwf_Component_Abstract::getFlag($i->componentClass, 'processInput')) {
+                $ret[] = $i;
+            }
+            if (Kwf_Component_Abstract::getFlag($i->componentClass, 'forwardProcessInput')) {
+                $ret = array_merge($ret, $i->getComponent()->getForwardProcessInputComponents());
             }
         }
-        return $process;
+        return $ret;
     }
 
     protected static function _callProcessInput($process)
@@ -161,6 +172,28 @@ class Kwf_Component_Abstract_ContentSender_Default extends Kwf_Component_Abstrac
 
     public function sendContent($includeMaster)
     {
+        if (Kwf_Util_Https::supportsHttps()) {
+
+            $foundRequestHttps = Kwf_Util_Https::doesComponentRequestHttps($this->_data);
+
+            if (isset($_SERVER['HTTPS'])) {
+                //we are on https
+                if (!$foundRequestHttps && isset($_COOKIE['kwcAutoHttps']) && !Zend_Session::sessionExists() && !Zend_Session::isStarted()) {
+                    //we where auto-redirected to https but don't need https anymore
+                    setcookie('kwcAutoHttps', '', 0, '/'); //delete cookie
+                    Kwf_Util_Https::ensureHttp();
+                }
+            } else {
+                //we are on http
+                if ($foundRequestHttps) {
+                    setcookie('kwcAutoHttps', '1', 0, '/');
+                    Kwf_Util_Https::ensureHttps();
+                }
+            }
+
+            Kwf_Benchmark::checkpoint('check requestHttps');
+        }
+
         $this->_sendHeader();
         $startTime = microtime(true);
         $process = $this->_getProcessInputComponents($includeMaster);

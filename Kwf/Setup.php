@@ -24,7 +24,7 @@ class Kwf_Setup
 {
     public static $configClass;
     public static $configSection;
-    const CACHE_SETUP_VERSION = 2; //increase version if incompatible changes to generated file are made
+    const CACHE_SETUP_VERSION = 3; //increase version if incompatible changes to generated file are made
 
     public static function setUp($configClass = 'Kwf_Config_Web')
     {
@@ -120,22 +120,41 @@ class Kwf_Setup
             case 'cli-server':
                 $requestPath = $_SERVER['SCRIPT_NAME'];
                 break;
+            case 'cgi-fcgi':
+                $requestPath = $_SERVER['SCRIPT_URL'];
+                break;
             default:
                 throw new Kwf_Exception("unsupported sapi: ".php_sapi_name());
         }
         return $requestPath;
     }
 
+    public static function getBaseUrl()
+    {
+        $ret = Kwf_Config::getValue('server.baseUrl');
+        if ($ret === null && isset($_SERVER['PHP_SELF']) && php_sapi_name() != 'cli') {
+            return substr($_SERVER['PHP_SELF'], 0, strrpos($_SERVER['PHP_SELF'], '/'));
+        }
+        return $ret;
+    }
+
     public static function dispatchKwc()
     {
         $requestPath = self::getRequestPath();
         if ($requestPath === false) return;
+        $fullRequestPath = $requestPath;
 
         $data = null;
+        $baseUrl = Kwf_Setup::getBaseUrl();
+        if ($baseUrl) {
+            if (substr($requestPath, 0, strlen($baseUrl)) != $baseUrl) {
+                throw new Kwf_Exception_NotFound();
+            }
+            $requestPath = substr($requestPath, strlen($baseUrl));
+        }
         $uri = substr($requestPath, 1);
         $i = strpos($uri, '/');
         if ($i) $uri = substr($uri, 0, $i);
-        $urlPrefix = Kwf_Config::getValue('kwc.UrlPrefix');
 
         if ($uri == 'robots.txt') {
             Kwf_Media_Output::output(array(
@@ -148,18 +167,14 @@ class Kwf_Setup
             $sitemap = new Kwf_Component_Sitemap();
             $sitemap->outputSitemap(Kwf_Component_Data_Root::getInstance());
         }
-
-        if (!in_array($uri, array('media', 'kwf', 'admin', 'assets', 'vkwf'))
-            && (!$urlPrefix || substr($requestPath, 0, strlen($urlPrefix)) == $urlPrefix)
-        ) {
+        if (!in_array($uri, array('media', 'kwf', 'admin', 'assets', 'vkwf'))) {
             if (!isset($_SERVER['HTTP_HOST'])) {
-                $requestUrl = 'http://'.Kwf_Config::getValue('server.domain').$requestPath;
+                $requestUrl = 'http://'.Kwf_Config::getValue('server.domain').$fullRequestPath;
             } else {
-                $requestUrl = 'http://'.$_SERVER['HTTP_HOST'].$requestPath;
+                $requestUrl = 'http://'.$_SERVER['HTTP_HOST'].$fullRequestPath;
             }
 
             Kwf_Trl::getInstance()->setUseUserLanguage(false);
-            self::_setLocale();
 
             $acceptLanguage = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : null;
             $root = Kwf_Component_Data_Root::getInstance();
@@ -170,7 +185,7 @@ class Kwf_Setup
                 throw new Kwf_Exception_NotFound();
             }
             if (!$exactMatch) {
-                if (rawurldecode($data->url) == $requestPath) {
+                if (rawurldecode($data->url) == $fullRequestPath) {
                     throw new Kwf_Exception("getPageByUrl reported this isn't an exact match, but the urls are equal. wtf.");
                 }
                 $url = $data->url;
@@ -182,7 +197,30 @@ class Kwf_Setup
                 exit;
             }
             $root->setCurrentPage($data);
-            $contentSender = Kwc_Abstract::getSetting($data->componentClass, 'contentSender');
+
+            if (isset($_COOKIE['feAutologin']) && !Kwf_Auth::getInstance()->getStorage()->read()) {
+                Kwf_Util_Https::ensureHttp();
+                $feAutologin = explode('.', $_COOKIE['feAutologin']);
+                if (count($feAutologin) == 2) {
+                    $adapter = new Kwf_Auth_Adapter_Service();
+                    $adapter->setIdentity($feAutologin[0]);
+                    $adapter->setCredential($feAutologin[1]);
+                    $auth = Kwf_Auth::getInstance();
+                    $auth->clearIdentity();
+                    $result = $auth->authenticate($adapter);
+                    if (!$result->isValid()) {
+                        setcookie('feAutologin', '', time() - 3600, '/', null, Kwf_Util_Https::supportsHttps(), true);
+                        setcookie('hasFeAutologin', '', time() - 3600, '/', null, false, true);
+                    }
+                }
+            }
+            if (isset($_COOKIE['hasFeAutologin'])) {
+                //feAutologin cookie is set with https-only (for security reasons)
+                //hasFeAutologin is seth without https-only
+                Kwf_Util_Https::ensureHttp();
+            }
+
+            $contentSender = Kwf_Component_Settings::getSetting($data->componentClass, 'contentSender');
             $contentSender = new $contentSender($data);
             $contentSender->sendContent(true);
             Kwf_Benchmark::shutDown();
@@ -241,29 +279,31 @@ class Kwf_Setup
         return $host;
     }
 
-    private static function _setLocale()
+    /**
+     * Check if user is logged in (faster than directly calling user model)
+     *
+     * Only asks user model (expensive) when there is something stored in the session
+     *
+     * @return boolean if user is logged in
+     */
+    public static function hasAuthedUser()
     {
-        /*
-            Das LC_NUMERIC wird absichtlich ausgenommen weil:
-            Wenn locale auf DE gesetzt ist und man aus der DB Kommazahlen
-            ausliest, dann kommen die als string mit Beistrich (,) an und mit
-            dem lässt sich nicht weiter rechnen.
-            PDO oder Zend machen da wohl den Fehler und ändern irgendwo die
-            PHP-Float repräsentation in einen String um und so steht er dann mit
-            Beistrich drin.
-            Beispiel:
-                setlocale(LC_ALL, 'de_DE');
-                $a = 2.3;
-                echo $a; // gibt 2,3 aus
-                echo $a * 2; // gibt 4,6 aus
-            Problem ist es dann, wenn die kommazahl in string gecastet wird:
-                setlocale(LC_ALL, 'de_DE');
-                $a = 2.3;
-                $b = "$a";
-                echo $b; // gibt 2,3 aus
-                echo $b * 2; // gibt 4 aus -> der teil hinterm , wird einfach ignoriert
-        */
-        setlocale(LC_ALL, explode(', ', trlcKwf('locale', 'C')));
-        setlocale(LC_NUMERIC, 'C');
+        static $benchmarkEnabled;
+        if (!isset($benchmarkEnabled)) $benchmarkEnabled = Kwf_Benchmark::isEnabled();
+        if ($benchmarkEnabled) $t = microtime(true);
+        if (!Zend_Session::isStarted() &&
+            !Zend_Session::sessionExists() &&
+            !Kwf_Config::getValue('autologin')
+        ) {
+            if ($benchmarkEnabled) Kwf_Benchmark::subCheckpoint('hasAuthedUser: no session', microtime(true)-$t);
+            return false;
+        }
+        if (!Kwf_Auth::getInstance()->getStorage()->read()) {
+            if ($benchmarkEnabled) Kwf_Benchmark::subCheckpoint('hasAuthedUser: storage empty', microtime(true)-$t);
+            return false;
+        }
+        $ret = Kwf_Registry::get('userModel')->hasAuthedUser();
+        if ($benchmarkEnabled) Kwf_Benchmark::subCheckpoint('hasAuthedUser: asked model', microtime(true)-$t);
+        return $ret;
     }
 }

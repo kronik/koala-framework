@@ -50,7 +50,7 @@ class Kwc_Abstract_Image_Component extends Kwc_Abstract_Composite_Component
         $ret['pdfMaxDpi'] = 150;
         $ret['editFilename'] = false;
         $ret['imageCaption'] = false;
-        $ret['altText'] = false;
+        $ret['altText'] = true;
         $ret['allowBlank'] = true;
         $ret['showHelpText'] = false;
         $ret['useDataUrl'] = false;
@@ -59,7 +59,7 @@ class Kwc_Abstract_Image_Component extends Kwc_Abstract_Composite_Component
         $ret['assetsAdmin']['dep'][] = 'ExtFormTriggerField';
         $ret['assetsAdmin']['files'][] = 'kwf/Kwc/Abstract/Image/DimensionField.js';
         $ret['assets']['files'][] = 'kwf/Kwc/Abstract/Image/Component.js';
-        $ret['assets']['dep'][] = 'ExtCore';
+        $ret['assets']['dep'][] = 'KwfOnReady';
         $ret['throwHasContentChangedOnRowColumnsUpdate'] = 'kwf_upload_id';
         return $ret;
     }
@@ -136,16 +136,23 @@ class Kwc_Abstract_Image_Component extends Kwc_Abstract_Composite_Component
                 $sourceSize = @getimagesize($data['file']);
             }
             $targetSize = $this->getImageDimensions();
-            if ($sourceSize[0] > $targetSize['width']*1.1 || $sourceSize[0] > $targetSize['height']*1.1) {
+            if ($sourceSize[0] > $targetSize['width']*1.1 || $sourceSize[1] > $targetSize['height']*1.1) {
                 $id = $this->getData()->componentId;
                 $type = 'dpr2-'.$this->getImageUrlType();
                 $ret['imageDpr2'] = Kwf_Media::getUrl($this->getData()->componentClass, $id, $type, $data['filename']);
             }
         }
 
-        $ret['altText'] = '';
+        $ret['altText'] = $this->_getAltText();
+
+        return $ret;
+    }
+
+    protected function _getAltText()
+    {
+        $ret = '';
         if ($this->_getSetting('altText')) {
-            $ret['altText'] = $this->_getRow()->alt_text;
+            $ret = $this->_getRow()->alt_text;
         }
         return $ret;
     }

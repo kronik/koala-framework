@@ -1,32 +1,27 @@
 <?php
 abstract class Kwf_Component_View_Renderer extends Kwf_Component_View_Helper_Abstract
 {
-    protected static function _getGroupedViewPlugins($componentClass)
+    protected function _canBeIncludedInFullPageCache($componentId, $viewCacheEnabled)
     {
-        $plugins = array();
-        foreach (Kwc_Abstract::getSetting($componentClass, 'plugins') as $p) {
-            if (is_instance_of($p, 'Kwf_Component_Plugin_Interface_ViewBeforeCache')) {
-                $plugins['beforeCache'][] = $p;
-            } else if (is_instance_of($p, 'Kwf_Component_Plugin_Interface_ViewBeforeChildRender')) {
-                $plugins['before'][] = $p;
-            } else if (is_instance_of($p, 'Kwf_Component_Plugin_Interface_ViewAfterChildRender')) {
-                $plugins['after'][] = $p;
-            } else if (is_instance_of($p, 'Kwf_Component_Plugin_Interface_ViewReplace')) {
-                $plugins['replace'][] = $p;
-            } else if (is_instance_of($p, 'Kwf_Component_Plugin_Interface_UseViewCache')) {
-                $plugins['useCache'][] = $p;
-            }
-        }
-        return $plugins;
+        //is caching possible for this type? and is view cache enabled?
+        $settings = $this->getViewCacheSettings($componentId);
+        return $settings['enabled'] && $viewCacheEnabled;
     }
 
-    protected function _getRenderPlaceholder($componentId, $config = array(), $value = null, $type = null, $plugins = array())
+    protected function _getRenderPlaceholder($componentId, $config = array(), $value = null, $plugins = array(), $viewCacheEnabled = true)
     {
-        if (!$type) $type = $this->_getType();
-        if (!is_null($value)) $componentId .= '(' . $value . ')';
-        if ($plugins) $componentId .= json_encode((object)$plugins);
-        $config = base64_encode(serialize($config));
-        return '{cc ' . "$type: $componentId $config" . '}';
+        $type = $this->_getType();
+
+        $this->_getRenderer()->includedComponent($componentId, $type);
+
+        if ($this->_canBeIncludedInFullPageCache($componentId, $viewCacheEnabled)) {
+            $pass = 1;
+        } else {
+            $pass = 2;
+        }
+        $plugins = $plugins ? json_encode((object)$plugins) : '';
+        $config = $config ? base64_encode(serialize($config)) : '';
+        return "<kwc$pass $type $componentId $value $plugins $config>";
     }
 
     protected function _getComponentById($componentId)
@@ -37,7 +32,7 @@ abstract class Kwf_Component_View_Renderer extends Kwf_Component_View_Helper_Abs
         return $ret;
     }
 
-    private function _getType()
+    protected function _getType()
     {
         $ret = substr(strrchr(get_class($this), '_'), 1);
         $ret = strtolower(substr($ret, 0, 1)).substr($ret, 1); //anfangsbuchstaben klein
@@ -52,28 +47,6 @@ abstract class Kwf_Component_View_Renderer extends Kwf_Component_View_Helper_Abs
     public abstract function render($componentId, $config);
 
     /**
-     * schreibt den cache, kann überschrieben werden um den cache zu deaktivieren
-     *
-     * wird nur aufgerufen wenn ungecached (logisch)
-     */
-    public function saveCache($componentId, $renderer, $config, $value, $content)
-    {
-        $component = $this->_getComponentById($componentId);
-        $type = $this->_getType();
-
-        // Content-Cache
-        Kwf_Component_Cache::getInstance()->save(
-            $component,
-            $content,
-            $renderer,
-            $type,
-            $value
-        );
-
-        return true;
-    }
-
-    /**
      * Kann die render ausgabe (die aus cache oder direkt aus render kommen kann)
      * anpassen.
      *
@@ -84,8 +57,11 @@ abstract class Kwf_Component_View_Renderer extends Kwf_Component_View_Helper_Abs
         return $cachedContent;
     }
 
-    public function enableCache()
+    public function getViewCacheSettings($componentId)
     {
-        return true;
+        return array(
+            'enabled' => true,
+            'lifetime' => null
+        );
     }
 }

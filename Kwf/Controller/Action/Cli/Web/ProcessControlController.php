@@ -15,7 +15,10 @@ class Kwf_Controller_Action_Cli_Web_ProcessControlController extends Kwf_Control
     public function preDispatch()
     {
         parent::preDispatch();
-        $this->_commands = Kwf_Registry::get('config')->processControl->toArray();
+        $this->_commands = array();
+        if (Kwf_Registry::get('config')->processControl) {
+            $this->_commands = Kwf_Registry::get('config')->processControl->toArray();
+        }
         foreach ($this->_commands as $k=>$c) {
             if (!$c) {
                 unset($this->_commands[$k]);
@@ -28,6 +31,42 @@ class Kwf_Controller_Action_Cli_Web_ProcessControlController extends Kwf_Control
     public function indexAction()
     {
         $this->_start();
+
+        if (Kwf_Config::getValue('debug.mailProcessControlOutput')) {
+
+            $logFiles = array();
+            foreach ($this->_commands as $requiredCmd) {
+                $logFiles[] = "log/$requiredCmd[cmd].log";
+                $logFiles[] = "log/$requiredCmd[cmd].err";
+            }
+            $msg = '';
+            foreach ($logFiles as $logFile) {
+                if (!file_exists($logFile)) continue;
+                if (!filesize($logFile)) continue;
+                if ($this->_getParam('debug')) echo "$logFile: ".filesize($logFile)." bytes\n";;
+                $tempFile = tempnam('temp/', 'log');
+                copy($logFile, $tempFile);
+                $fp = fopen($logFile, 'w');
+                ftruncate($fp, filesize($tempFile)-filesize($logFile));
+                fclose($fp);
+                $msg .= date('Y-m-d H:i:s')." $logFile:\n";
+                $msg .= trim(file_get_contents($tempFile))."\n";
+            }
+
+            if ($msg) {
+                $mail = new Kwf_Mail();
+                $mail->setSubject(Kwf_Config::getValue('server.domain').' process-control output');
+                $mail->setBodyText($msg);
+                foreach (Kwf_Registry::get('config')->developers as $d) {
+                    if ($d->sendProcessControlOutput) {
+                        $d->email;
+                        $mail->addTo($d->email);
+                    }
+                }
+                $mail->send();
+            }
+        }
+
         exit;
     }
 
@@ -141,10 +180,10 @@ class Kwf_Controller_Action_Cli_Web_ProcessControlController extends Kwf_Control
             while ($runningCount < $requiredCmd['count']) {
 
                 if (!$this->_getParam('silent')) echo "Process $requiredCmd[cmd] isn't running. Starting...\n";
-                $cmd = "php bootstrap.php $requiredCmd[cmd] ";
+                $cmd = Kwf_Config::getValue('server.phpCli')." bootstrap.php $requiredCmd[cmd] ";
                 if ($this->_getParam('debug')) $cmd .= "--debug ";
-                $cmd .= " 2>>log/$requiredCmd[cmd].err";
-                $cmd .= " 1>>log/$requiredCmd[cmd].log";
+                $cmd .= " 2>>".escapeshellarg("log/$requiredCmd[cmd].err");
+                $cmd .= " 1>>".escapeshellarg("log/$requiredCmd[cmd].log");
                 $cmd .= " &";
                 //if (!$this->_getParam('silent')) echo $cmd."\n";
                 passthru($cmd);
@@ -173,11 +212,11 @@ class Kwf_Controller_Action_Cli_Web_ProcessControlController extends Kwf_Control
                         $killed[] = $p['pid'];
                     } else {
                         if (!$this->_getParam('silent')) echo "kill $p[pid] $p[cmd] $p[args]\n";
-                        posix_kill($p['pid'], SIGTERM);
+                        system("kill $p[pid]");
                         $killed[] = $p['pid'];
                         foreach ($p['childPIds'] as $pid) {
                             if (!$this->_getParam('silent')) echo "    kill child process $pid\n";
-                            posix_kill($pid, SIGTERM);
+                            system("kill $pid");
                             $killed[] = $pid;
                         }
                     }

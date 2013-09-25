@@ -31,6 +31,8 @@ class Kwc_Form_Decorator_Label extends Kwc_Form_Decorator_Abstract
             if ($item['item'] && $item['item']->getCls()) {
                 $class .= ' '.$item['item']->getCls();
             }
+
+            $labelPos = 'left';
             if ($item['item']) {
                 $c = get_class($item['item']);
                 $classParts = array();
@@ -43,9 +45,15 @@ class Kwc_Form_Decorator_Label extends Kwc_Form_Decorator_Abstract
                     if ($c == 'Kwf_Form_Field_Abstract' || $c == 'Kwf_Form_Field_SimpleAbstract') break;
                 }
                 $class .= implode(' ', array_reverse($classParts));
+                if ($item['item']->getLabelPosition()) {
+                    $labelPos = $item['item']->getLabelPosition();
+                }
+                $class .= ' kwcLabelPosition'.ucfirst($labelPos);
                 $class .= ' '.$item['item']->getFieldName();
             }
+
             $preHtml = '<div class="'.$class.'">';
+            $hasLabel = false;
             if ($item['item'] && !$item['item']->getHideLabel() && $item['item']->getFieldLabel()) {
                 $preHtml .= '<label for="'
                     .(isset($item['id']) ? $item['id'] : $item['item']->getFieldName()).'"'
@@ -62,10 +70,15 @@ class Kwc_Form_Decorator_Label extends Kwc_Form_Decorator_Abstract
                      */
                     $preHtml .= '<span class="requiredSign">*</span>';
                 }
-                $preHtml .= $item['item']->getLabelSeparator();
+                $preHtml .= '<span class="labelSeparator">'.$item['item']->getLabelSeparator().'</span>';
                 $preHtml .= '</label>';
+                $hasLabel = true;
             }
             $postHtml = '';
+            $style = '';
+            $preHtml = $preHtml . '<div class="kwfFormFieldWrapper'.($hasLabel ? ' hasLabel' : '').'" style="'.$style.'">';
+            $postHtml = '</div>'.$postHtml;
+
             if ($item['item'] && $item['item']->getComment()) {
                 $postHtml .= '<span class="comment">'.$item['item']->getComment().'</span>';
             }

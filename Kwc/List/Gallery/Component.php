@@ -1,19 +1,13 @@
 <?php
-class Kwc_List_Gallery_Component extends Kwc_Abstract_List_Component
+class Kwc_List_Gallery_Component extends Kwc_List_Images_Component
 {
     public static function getSettings()
     {
         $ret = parent::getSettings();
-        $ret['assets']['dep'][] = 'KwfEnlargeNextPrevious';
         $ret['componentName'] = trlKwfStatic('Gallery');
         $ret['componentIcon'] = new Kwf_Asset('images.png');
         $ret['generators']['child']['component'] = 'Kwc_List_Gallery_Image_Component';
-        $ret['cssClass'] = 'webStandard';
-
         $ret['extConfig'] = 'Kwc_List_Gallery_ExtConfig';
-
-        $ret['contentMargin'] = 10;
-
         return $ret;
     }
 
@@ -48,6 +42,4 @@ class Kwc_List_Gallery_Component extends Kwc_Abstract_List_Component
         $ret = (int)floor($ownWidth / $columns);
         return $ret;
     }
-
-    //TODO: cache meta für breite geändert
 }

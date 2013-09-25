@@ -1,111 +1,81 @@
 @import "susy";
-$column-width   : 100%;
-$gutter-width   : 0%;
-$grid-padding   : 0%;
-$container-style: fluid;
+@import "compass/css3/box-sizing";
+$gutter-width   : 0em;
+$grid-padding   : 0em;
 
-.cssClass.col2col-50_50 {
-    $total-columns : 2;
-    $column-width : 100% / $total-columns;
+.cssClass {
+    .listItem {
+        padding-bottom: 20px;
 
-    @include container;
-
-    .listItem.span1 {
-        @include span-columns(1);
-    }
-}
-
-.cssClass.col2col-33_66,
-.cssClass.col2col-66_33 {
-    $total-columns : 3;
-    $column-width : 100% / $total-columns;
-
-    @include container;
-
-    .listItem.span1 {
-        @include span-columns(1);
-    }
-
-    .listItem.span2 {
-        @include span-columns(2);
-    }
-}
-
-.cssClass.col2col-25_75,
-.cssClass.col2col-75_25 {
-    $total-columns : 4;
-    $column-width : 100% / $total-columns;
-
-    @include container;
-
-    .listItem.span1 {
-        @include span-columns(1);
-    }
-
-    .listItem.span3 {
-        @include span-columns(3);
-    }
-}
-
-.cssClass.col3col-33_33_33 {
-    $total-columns : 3;
-    $column-width : 100% / $total-columns;
-
-    @include container;
-
-    .listItem.span1 {
-        @include span-columns(1);
-    }
-}
-
-.cssClass.col3col-50_25_25,
-.cssClass.col3col-25_50_25,
-.cssClass.col3col-25_25_50 {
-    $total-columns : 4;
-    $column-width : 100% / $total-columns;
-
-    @include container;
-
-    .listItem.span1 {
-        @include span-columns(1);
-    }
-
-    .listItem.span2 {
-        @include span-columns(2);
-    }
-}
-
-.cssClass.col2col-50_50,
-.cssClass.col2col-33_66,
-.cssClass.col2col-66_33,
-.cssClass.col2col-25_75,
-.cssClass.col2col-75_25,
-.cssClass.col3col-33_33_33,
-.cssClass.col3col-50_25_25,
-.cssClass.col3col-25_50_25,
-.cssClass.col3col-25_25_50 {
-    .listItem.kwcLast {
-        @include omega;
-    }
-}
-
-$column-width   : 100%;
-@include at-breakpoint(1 480px) {
-    .cssClass.col2col-50_50,
-    .cssClass.col2col-33_66,
-    .cssClass.col2col-66_33,
-    .cssClass.col2col-25_75,
-    .cssClass.col2col-75_25,
-    .cssClass.col3col-33_33_33,
-    .cssClass.col3col-50_25_25,
-    .cssClass.col3col-25_50_25,
-    .cssClass.col3col-25_25_50 {
-        @include container;
-
-        .listItem.span1,
-        .listItem.span2,
-        .listItem.span3 {
-            @include span-columns(1);
+        &.kwcLast {
+            padding-bottom: 0px;
+            padding-right: 0;
         }
+
+        .kwcTextImage {
+            &.noText {
+                .kwcBasicImageEnlarge {
+                    text-align: left;
+                }
+            }
+        }
+    }
+}
+
+.cssClass.gt480 {
+    .listItem {
+        @include box-sizing(border-box);
+        padding-right: 20px;
+
+    }
+
+    &.col2col-50_50 {
+        .listItem.span1 {
+            @include span-columns(1, 2);
+        }
+    }
+
+    &.col2col-33_66,
+    &.col2col-66_33 {
+        .listItem.span1 {
+            @include span-columns(1, 3);
+        }
+
+        .listItem.span2 {
+            @include span-columns(2, 3);
+        }
+    }
+
+    &.col2col-25_75,
+    &.col2col-75_25 {
+        .listItem.span1 {
+            @include span-columns(1, 4);
+        }
+
+        .listItem.span3 {
+            @include span-columns(3, 4);
+        }
+    }
+
+    &.col3col-33_33_33 {
+        .listItem.span1 {
+            @include span-columns(1, 3);
+        }
+    }
+
+    &.col3col-50_25_25,
+    &.col3col-25_50_25,
+    &.col3col-25_25_50 {
+        .listItem.span1 {
+            @include span-columns(1, 4);
+        }
+
+        .listItem.span2 {
+            @include span-columns(2, 4);
+        }
+    }
+
+    > .listItem.kwcLast {
+        @include omega;
     }
 }

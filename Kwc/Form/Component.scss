@@ -1,0 +1,222 @@
+@import "compass/css3/box-sizing";
+@import "compass/utilities/general/clearfix";
+
+.cssClass {
+    .kwfFormFieldWrapper {
+        margin-bottom: 4px;
+
+        .kwfFieldErrorIconBubble {
+            clear: left;
+
+            .message {
+                text-align: left;
+            }
+        }
+    }
+
+    div.kwcForm form div.kwfFormFieldRadioHorizontal {
+        label {
+            display: inline-block; 
+            float: none;
+            width: auto;
+            margin-left: 0px;
+        }
+    }
+
+    div.kwfFormFieldDateField a.icon {
+        right: 4px;
+        top: 22px;
+    }
+
+    div.kwcFormFieldFile {
+        input.fileSelector {
+            height: 19px;
+            padding: 0;
+        }
+    }
+
+    &.responsive {
+
+        &.veryNarrow {
+            > div.kwcForm > form {
+                .kwfFormFieldWrapper {
+                    input, textarea, select {
+                        @include box-sizing(border-box);
+                        width: 100% !important;
+
+                        &.radio {
+                            width: auto !important;
+                        }
+
+                        &[type='checkbox'] {
+                            width: auto !important;
+                        }
+                    }
+                }
+
+                .kwfFieldErrorIconBubble {
+                    background: none transparent;
+                    position: relative;
+                    width: auto;
+
+                    .message {
+                        background: none transparent;
+                        display: block !important;
+                        color: red;
+                        padding: 0;
+                        margin: 0;
+                        right: 0px !important;
+                        white-space: nowrap;
+                        position: relative;
+                    }
+
+                    .arrow {
+                        display: none !important;
+                    }
+                }
+            }
+
+            label {
+                width: 30% !important;
+            }
+
+            .kwfFormFieldRadio {
+                .kwfFormFieldRadio {
+                    label {
+                        width: auto !important;
+                    }
+                }
+            }
+
+            div.kwcFormFieldFile {
+                .underlayFileSelector {
+                    a {
+                        position: absolute;
+                        right: 5px;
+                        top: 4px;
+                    }
+                }
+            }
+        }
+
+        &.veryNarrow.gt350 {
+            .kwfFormFieldWrapper {
+                input, textarea, select, {
+                    width: 100% !important;
+
+                    &.radio {
+                        width: auto !important;
+                    }
+
+                    &[type='checkbox'] {
+                        width: auto !important;
+                    }
+                }
+            }
+
+            .kwfFormFieldWrapper.hasLabel {
+                input, textarea, select, {
+                    width: 67% !important;
+
+                    &.radio {
+                        width: auto !important;
+                    }
+
+                    &[type='checkbox'] {
+                        width: auto !important;
+                    }
+                }
+            }
+        }
+
+        &.gt350 {
+            label {
+                float: left;
+                width: 30%;
+                margin-right: 3%;
+            }
+
+            div.kwfFormFieldDateField a.icon {
+                right: 4px;
+                top: 3px;
+            }
+
+            .kwcFormFieldRadio {
+                .kwfFormFieldWrapper {
+                    &.hasLabel {
+                        display: inline-block;
+                    }
+                }
+            }
+
+            .kwfFormFieldMultiCheckbox {
+                .kwfFormFieldMultiCheckbox {
+                    label {
+                        width: auto;
+                        margin-right: 0;
+                    }
+                }
+            }
+
+            .kwfFieldErrorIconBubble {
+                .message {
+                    text-align: right;
+                }
+            }
+        }
+
+        &.gt500 {
+            label {
+                width: 120px;
+                margin-right: 20px;
+            }
+
+            .kwfFormFieldWrapper {
+                &.hasLabel {
+                    display: inline-block;
+                    position: relative;
+                }
+            }
+
+            .kwfFieldErrorIconBubble {
+                top: 50%;
+                right: 3px;
+                margin-top: -8px;
+
+                .message {
+                    text-align: center;
+                }
+            }
+
+            div.kwfFormFieldDateField a.icon {
+                right: -20px;
+                top: 50%;
+                margin-top: -8px;
+            }
+
+            .kwcFormFieldRadio {
+                .kwfFieldErrorIconBubble {
+                    right: -3px;
+                }
+            }
+
+            .kwcFormFieldCheckbox {
+                .kwfFieldErrorIconBubble {
+                    right: -10px;
+                    top: 3px;
+                }
+            }
+
+            .kwcFormFieldMultiCheckbox,
+            .kwcFormFieldFile {
+                .kwfFieldErrorIconBubble {
+                    right: -25px;
+                }
+            }
+        }
+    }
+
+    &.unResponsive {
+        @extend .responsive.gt500;
+    }
+}

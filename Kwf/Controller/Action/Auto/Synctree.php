@@ -70,7 +70,7 @@ abstract class Kwf_Controller_Action_Auto_Synctree extends Kwf_Controller_Action
     */
     public function indexAction()
     {
-        $this->view->controllerUrl = $this->getRequest()->getPathInfo();
+        $this->view->controllerUrl = $this->getRequest()->getBaseUrl().$this->getRequest()->getPathInfo();
         $this->view->xtype = 'kwf.autotreesync';
     }
 
@@ -421,7 +421,7 @@ abstract class Kwf_Controller_Action_Auto_Synctree extends Kwf_Controller_Action
 
     protected function _saveSessionNodeOpened($id, $activate)
     {
-        $session = new Zend_Session_Namespace('admin');
+        $session = new Kwf_Session_Namespace('admin');
         $key = 'treeNodes_' . get_class($this);
         if ($this->_getParam('openedId')) $session->$key = array();
         $ids = is_array($session->$key) ? $session->$key : array();
@@ -458,8 +458,8 @@ abstract class Kwf_Controller_Action_Auto_Synctree extends Kwf_Controller_Action
         $this->view->visible = $row->visible == '1';
         if (!isset($this->view->icon)) {
             $this->view->icon = $this->view->visible ?
-                $this->_icons['invisible']->__toString() :
-                $this->_icons['default']->__toString();
+                $this->_icons['default']->__toString() :
+                $this->_icons['invisible']->__toString();
         }
     }
 

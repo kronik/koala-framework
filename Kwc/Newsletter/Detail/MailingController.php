@@ -32,16 +32,12 @@ class Kwc_Newsletter_Detail_MailingController extends Kwf_Controller_Action_Auto
             'width' => 85
         );
 
+        $this->_columns->add(new Kwf_Grid_Column('email', trlKwf('E-Mail'), 200))
+            ->setData(new Kwc_Newsletter_Detail_UserData('email'));
         $this->_columns->add(new Kwf_Grid_Column('firstname', trlKwf('Firstname'), 140))
             ->setData(new Kwc_Newsletter_Detail_UserData('firstname'));
         $this->_columns->add(new Kwf_Grid_Column('lastname', trlKwf('Lastname'), 140))
             ->setData(new Kwc_Newsletter_Detail_UserData('lastname'));
-        $this->_columns->add(new Kwf_Grid_Column('email', trlKwf('E-Mail'), 200))
-            ->setData(new Kwc_Newsletter_Detail_UserData('email'));
-        $this->_columns->add(new Kwf_Grid_Column('format', trlKwf('Format'), 60))
-            ->setData(new Kwc_Newsletter_Detail_UserData('format'));
-        $this->_columns->add(new Kwf_Grid_Column_Button('show'))
-            ->setButtonIcon(new Kwf_Asset('email_open.png'));
     }
 
     protected function _getSelect()
@@ -57,7 +53,6 @@ class Kwc_Newsletter_Detail_MailingController extends Kwf_Controller_Action_Auto
             ->whereEquals('newsletter_id', $this->_getNewsletterRow()->id);
         $count = $this->_model->countRows($select);
 
-        $select->whereEquals('status', 'queued');
         $count2 = $this->_model->countRows($select);
         $this->_model->deleteRows($select);
         $this->view->message = trlKwf(
@@ -85,6 +80,7 @@ class Kwc_Newsletter_Detail_MailingController extends Kwf_Controller_Action_Auto
             if ($row->status == 'stop') {
                 $this->view->error = trlKwf('Newsletter stopped, cannot change status.');
             } else if (in_array($status, array('start', 'pause', 'stop'))) {
+                if ($status != 'start') $row->resume_date = null;
                 $row->status = $status;
                 $row->save();
             } else {

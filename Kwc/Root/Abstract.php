@@ -19,6 +19,7 @@ class Kwc_Root_Abstract extends Kwc_Abstract
         $ret['componentName'] = trlKwf('Root');
         $ret['contentWidth'] = 600;
         $ret['contentWidthBoxSubtract'] = array();
+        $ret['flags']['hasBaseProperties'] = true;
         return $ret;
     }
 
@@ -68,20 +69,20 @@ class Kwc_Root_Abstract extends Kwc_Abstract
         return $ret;
     }
 
-    protected function _getMasterChildContentWidth(Kwf_Component_Data $sourcePage)
+    public function getBaseProperty($propertyName)
     {
-        $ret = $this->_getSetting('contentWidth');
-        $boxes = array();
-        foreach ($sourcePage->getChildBoxes() as $box) {
-            $boxes[$box->box] = $box;
+        if ($propertyName == 'language') {
+            return Kwf_Trl::getInstance()->getWebCodeLanguage();
+        } else if ($propertyName == 'domain') {
+            return Kwf_Config::getValue('server.domain');
+        } else if ($propertyName == 'money.decimals') {
+            return 2;
+        } else if ($propertyName == 'money.decimalSeparator') {
+            return trlcKwf('decimal separator', ".");
+        } else if ($propertyName == 'money.thousandSeparator') {
+            return trlcKwf('thousands separator', ",");
+        } else {
+            return Kwf_Config::getValue($propertyName);
         }
-        foreach ($this->_getSetting('contentWidthBoxSubtract') as $box=>$width) {
-            if (!isset($boxes[$box])) continue;
-            $c = $boxes[$box];
-            if ($c && $c->hasContent()) {
-                $ret -= $width;
-            }
-        }
-        return $ret;
     }
 }

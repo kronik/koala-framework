@@ -9,6 +9,38 @@ class Kwf_Acl extends Zend_Acl
     protected $_componentAcl;
     protected $_kwcResourcesLoaded = false;
 
+
+    public static function getInstance()
+    {
+        static $i;
+        if (!isset($i)) {
+            $t = microtime(true);
+            $m = memory_get_usage();
+            $cacheId = 'acl';
+            $i = Kwf_Cache_Simple::fetch($cacheId);
+            if ($i === false) {
+                $class = Kwf_Config::getValue('aclClass');
+                $i = new $class();
+                $i->loadKwcResources();
+                Kwf_Cache_Simple::add($cacheId, $i);
+                Kwf_Benchmark::subCheckpoint('create Acl', microtime(true)-$t);
+            } else {
+                Kwf_Benchmark::subCheckpoint('load cached Acl '.round((memory_get_usage()-$m) / (1024*1024), 2).'MB', microtime(true)-$t);
+            }
+        }
+        return $i;
+    }
+
+    public static function clearCache()
+    {
+        static $cleared = false;
+        if ($cleared) return; //only clear single time
+        $cleared = true;
+
+        $cacheId = 'acl';
+        Kwf_Cache_Simple::delete($cacheId);
+    }
+
     public function __construct()
     {
         $this->addRole(new Zend_Acl_Role('guest'));
@@ -19,21 +51,26 @@ class Kwf_Acl extends Zend_Acl
         $this->add(new Zend_Acl_Resource('kwf_user_menu'));
         $this->add(new Zend_Acl_Resource('kwf_user_login'));
         $this->add(new Zend_Acl_Resource('kwf_user_changeuser'));
+        $this->add(new Zend_Acl_Resource('kwf_user_logout'));
         $this->add(new Zend_Acl_Resource('kwf_error_error'));
         $this->add(new Zend_Acl_Resource('kwf_user_about'));
         $this->add(new Zend_Acl_Resource('kwf_welcome_index'));
         $this->add(new Zend_Acl_Resource('kwf_welcome_content'));
+        $this->add(new Zend_Acl_Resource('kwf_welcome_welcome'));
         $this->add(new Zend_Acl_Resource('kwf_debug'));
-        $this->add(new Zend_Acl_Resource('kwf_debug_sql'), 'kwf_debug');
-        $this->add(new Zend_Acl_Resource('kwf_debug_assets'), 'kwf_debug');
-        $this->add(new Zend_Acl_Resource('kwf_debug_activate'), 'kwf_debug');
         $this->add(new Zend_Acl_Resource('kwf_debug_session-restart'), 'kwf_debug');
         $this->add(new Zend_Acl_Resource('kwf_debug_php-info'), 'kwf_debug');
         $this->add(new Zend_Acl_Resource('kwf_debug_apc'), 'kwf_debug');
         $this->add(new Zend_Acl_Resource('kwf_debug_assets-dependencies'), 'kwf_debug');
         $this->add(new Zend_Acl_Resource('kwf_debug_benchmark'), 'kwf_debug');
+        $this->add(new Zend_Acl_Resource('kwf_debug_benchmark-counter'));
         $this->add(new Zend_Acl_Resource('kwf_media_upload'));
         $this->add(new Zend_Acl_Resource('kwf_test'));
+        $this->add(new Zend_Acl_Resource('kwf_maintenance_setup'));
+        $this->add(new Zend_Acl_Resource('kwf_maintenance_update'));
+        $this->add(new Zend_Acl_Resource('kwf_maintenance_clear-cache'));
+        $this->add(new Zend_Acl_Resource('kwf_maintenance_update-downloader'));
+        $this->add(new Zend_Acl_Resource('kwf_maintenance_fulltext'));
         $this->add(new Zend_Acl_Resource('edit_role'));
         $this->add(new Kwf_Acl_Resource_EditRole('edit_role_admin', 'admin'), 'edit_role');
 
@@ -58,10 +95,12 @@ class Kwf_Acl extends Zend_Acl
         $this->deny('guest', 'default_index');
         $this->allow(null, 'kwf_user_menu');
         $this->allow(null, 'kwf_user_login');
+        $this->allow(null, 'kwf_user_logout');
         $this->allow(null, 'kwf_error_error');
         $this->allow(null, 'kwf_user_about');
         $this->allow(null, 'kwf_welcome_index');
         $this->allow(null, 'kwf_welcome_content');
+        $this->allow(null, 'kwf_welcome_welcome');
         $this->deny('guest', 'kwf_welcome_index');
         $this->allow(null, 'kwf_user_self');
         $this->deny('guest', 'kwf_user_self');
@@ -71,6 +110,12 @@ class Kwf_Acl extends Zend_Acl
         $this->allow(null, 'kwf_spam_set');
         $this->allow(null, 'kwf_debug_session-restart');
         $this->allow(null, 'kwf_test');
+        $this->allow(null, 'kwf_maintenance_setup'); //allow for everyone, as there are no users yet during setup
+        $this->allow('admin', 'kwf_maintenance_update');
+        $this->allow('admin', 'kwf_maintenance_clear-cache');
+        $this->allow('admin', 'kwf_maintenance_update-downloader');
+        $this->allow('admin', 'kwf_maintenance_fulltext');
+        $this->allow(null, 'kwf_debug_benchmark-counter'); //allow for everyone we do additional permissions check in there
     }
 
     public function isAllowed($role = null, $resource = null, $privilege = null)
@@ -248,6 +293,8 @@ class Kwf_Acl extends Zend_Acl
     {
         if ($this->_kwcResourcesLoaded) return;
         $this->_kwcResourcesLoaded = true;
+
+        $t = microtime(true);
         $menuConfigs = array();
         foreach (Kwc_Abstract::getComponentClasses() as $c) {
             if (Kwc_Abstract::getFlag($c, 'hasResources')) {
@@ -261,6 +308,7 @@ class Kwf_Acl extends Zend_Acl
         foreach ($menuConfigs as $cfg) {
             $cfg->addResources($this);
         }
+        Kwf_Benchmark::subCheckpoint('kwc resources', microtime(true)-$t);
     }
 
     public static function _compareMenuConfig(Kwf_Component_Abstract_MenuConfig_Abstract $a, Kwf_Component_Abstract_MenuConfig_Abstract $b)
@@ -278,7 +326,10 @@ class Kwf_Acl extends Zend_Acl
     {
         $menus = array();
         foreach ($resources as $resource) {
-            if ($resource instanceof Kwf_Acl_Resource_Component_Interface) {
+            if ($resource instanceof Kwf_Acl_Resource_MenuDropdown) {
+                // don't validate because visibility of a dropdown should be defined
+                // by it's children
+            } else if ($resource instanceof Kwf_Acl_Resource_Component_Interface) {
                 if (!$this->getComponentAcl()->isAllowed($user, $resource->getComponent())) continue;
             } else if ($resource instanceof Kwf_Acl_Resource_ComponentClass_Interface) {
                 if (!$this->getComponentAcl()->isAllowed($user, $resource->getComponentClass())) continue;
@@ -295,6 +346,7 @@ class Kwf_Acl extends Zend_Acl
             if (is_string($menu['menuConfig'])) {
                 $menu['menuConfig'] = array('text' => $menu['menuConfig']);
             }
+            $menu['menuConfig']['text'] = Kwf_Trl::getInstance()->trlStaticExecute($menu['menuConfig']['text']);
 
             if (isset($menu['menuConfig']['icon'])) {
                 if (is_string($menu['menuConfig']['icon'])) {
@@ -453,5 +505,60 @@ class Kwf_Acl extends Zend_Acl
             if ($this->_canHaveChildComponentOnSamePage($c, $lookForClass)) return true;
         }
         return false;
+    }
+
+
+    public function allow($roles = null, $resources = null, $privileges = null, Zend_Acl_Assert_Interface $assert = null)
+    {
+        if ($resources == null && $roles != 'admin') {
+            throw new Kwf_Exception("Don't be lazy, never allow all resources - you should whitelist");
+        }
+        return parent::allow($roles, $resources, $privileges, $assert);
+    }
+
+    public function setParentResource($resource, $parent)
+    {
+        if (is_string($resource)) {
+            $resource = new Zend_Acl_Resource($resource);
+        }
+
+        if (!$resource instanceof Zend_Acl_Resource_Interface) {
+            require_once 'Zend/Acl/Exception.php';
+            throw new Zend_Acl_Exception('addResource() expects $resource to be of type Zend_Acl_Resource_Interface');
+        }
+
+        $resourceId = $resource->getResourceId();
+
+        if (!$this->has($resourceId)) {
+            require_once 'Zend/Acl/Exception.php';
+            throw new Zend_Acl_Exception("Resource id '$resourceId' doesn't exists in the ACL");
+        }
+
+        //unset children of previous parent
+        $previousParent = $this->_resources[$resourceId]['parent'];
+        if ($previousParent) {
+            unset($this->_resources[$previousParent->getResourceId()]['children'][$resourceId]);
+        }
+
+        $resourceParent = null;
+
+        if (null !== $parent) {
+            try {
+                if ($parent instanceof Zend_Acl_Resource_Interface) {
+                    $resourceParentId = $parent->getResourceId();
+                } else {
+                    $resourceParentId = $parent;
+                }
+                $resourceParent = $this->get($resourceParentId);
+            } catch (Zend_Acl_Exception $e) {
+                require_once 'Zend/Acl/Exception.php';
+                throw new Zend_Acl_Exception("Parent Resource id '$resourceParentId' does not exist", 0, $e);
+            }
+            $this->_resources[$resourceParentId]['children'][$resourceId] = $resource;
+        }
+
+        $this->_resources[$resourceId]['parent'] = $resourceParent;
+
+        return $this;
     }
 }

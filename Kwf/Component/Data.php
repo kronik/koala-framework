@@ -46,6 +46,7 @@ class Kwf_Component_Data
     private $_childComponentsCache = array();
     private $_recursiveGeneratorsCache = array();
     private $_languageCache;
+    private $_expandedComponentIdCache;
 
     //public static $objectsCount;
     //public static $objectsById = array();
@@ -121,8 +122,8 @@ class Kwf_Component_Data
             }
         } while ($data = $data->parent);
 
-        $urlPrefix = Kwf_Config::getValue('kwc.urlPrefix'); //TODO urlPrefix vs. root filename: both do the same
-        return ($urlPrefix ? $urlPrefix : '').'/'.$filename;
+        $baseUrl = Kwf_Setup::getBaseUrl(); //TODO baseUrl vs. root filename: both do the same
+        return ($baseUrl ? $baseUrl : '').'/'.$filename;
     }
 
     /**
@@ -139,14 +140,19 @@ class Kwf_Component_Data
      */
     public function getExpandedComponentId()
     {
+        if ($this->_expandedComponentIdCache) {
+            return $this->_expandedComponentIdCache;
+        }
         $generator = $this->generator;
         if ($generator instanceof Kwc_Root_Category_Generator) {
             $separator = '_';
         } else {
             $separator = $generator->getIdSeparator();
         }
-        return $this->parent->getExpandedComponentId() .
+        $this->_expandedComponentIdCache = $this->parent->getExpandedComponentId() .
             $separator . $this->id;
+
+        return $this->_expandedComponentIdCache;
     }
 
     /**
@@ -156,13 +162,7 @@ class Kwf_Component_Data
      */
     public function getDomain()
     {
-        $data = $this;
-        do {
-            if (Kwc_Abstract::getFlag($data->componentClass, 'hasDomain')) {
-                return $data->getComponent()->getDomain();
-            }
-        } while($data = $data->parent);
-        return Kwf_Config::getValue('server.domain');
+        return $this->getBaseProperty('domain');
     }
 
     /**
@@ -170,20 +170,25 @@ class Kwf_Component_Data
      *
      * @return string
      */
-    public function getAbsoluteUrl()
+    public function getAbsoluteUrl($useHttps = false)
     {
-        $protocol = Kwf_Config::getValue('server.https') ? 'https' : 'http';
+        $https = Kwf_Util_Https::domainSupportsHttps($this->getDomain());
+        if ($https && !$useHttps) {
+            //if component requests https use it even if $useHttps is false
+            $https = Kwf_Util_Https::doesComponentRequestHttps($this);
+        }
+        $protocol = $https ? 'https' : 'http';
         return $protocol . '://'.$this->getDomain().$this->url;
     }
 
     /**
-     * Returns absolute url including preview domain and protocol (http://)
+     * Returns preview url
      *
      * @return string
      */
     public function getPreviewUrl()
     {
-        return '/admin/component/preview/?url='.urlencode($this->getAbsoluteUrl().'?kwcPreview');
+        return Kwf_Setup::getBaseUrl().'/admin/component/preview/?url='.urlencode($this->getAbsoluteUrl(true).'?kwcPreview');
     }
 
     public function __get($var)
@@ -1199,29 +1204,6 @@ class Kwf_Component_Data
     }
 
     /**
-     * Returns the data resposible for the language
-     *
-     * (has a hasLanguage flag)
-     *
-     * might be null if only a single language is used
-     *
-     * @return Kwf_Component_Data
-     */
-    public function getLanguageData()
-    {
-        // search parents for flag hasLanguage
-        $c = $this;
-        do {
-            if (Kwc_Abstract::getFlag($c->componentClass, 'hasLanguage')) {
-                break;
-            }
-        } while (($c = $c->parent));
-
-        if (!$c) return null;
-        return $c;
-    }
-
-    /**
      * Returns the language used by this data
      *
      * @return string
@@ -1229,15 +1211,51 @@ class Kwf_Component_Data
     public function getLanguage()
     {
         if (!isset($this->_languageCache)) { //cache ist vorallem für bei kwfUnserialize nützlich
-            if (Kwc_Abstract::getFlag($this->componentClass, 'hasLanguage')) {
-                $this->_languageCache = $this->getComponent()->getLanguage();
-            } else if ($this->parent) {
-                $this->_languageCache = $this->parent->getLanguage();
-            } else {
-                $this->_languageCache = Kwf_Trl::getInstance()->getWebCodeLanguage();
-            }
+            $this->_languageCache = $this->getBaseProperty('language');
         }
         return $this->_languageCache;
+    }
+
+    /**
+     * Retrieves a base Property for a component
+     *
+     * Any component can add a flag called 'hasBaseProperties' and implement
+     * getBaseProperties($propertyName) to return a property specific for this component and all
+     * child components (e.g. language, domain, id for analytics...)
+     * It's also possible to specify the returned property by adding an array "baseProperties"
+     * to the settings. This may help some to exclude components to be asked for base Properties
+     * which they actually don't return.
+     *
+     * @param string $propertyName
+     * @return string Property
+     */
+    public function getBaseProperty($propertyName)
+    {
+        $ret = null;
+        $c = $this;
+        while (is_null($ret) && $c) {
+            if (Kwc_Abstract::getFlag($c->componentClass, 'hasBaseProperties')) {
+                $ret = $c->getComponent()->getBaseProperty($propertyName);
+            }
+            $c = $c->parent;
+        }
+        return $ret;
+    }
+
+
+    public function getSubroot()
+    {
+        $c = $this;
+        while (true) {
+            if (Kwc_Abstract::getFlag($c->componentClass, 'subroot')) {
+                break;
+            }
+            if ($c->componentId == 'root') {
+                break;
+            }
+            $c = $c->parent;
+        }
+        return $c;
     }
 
     /**
@@ -1344,7 +1362,7 @@ class Kwf_Component_Data
     public function render($enableCache = null, $renderMaster = false)
     {
         $output = new Kwf_Component_Renderer();
-        $output->setEnableCache($enableCache);
+        if ($enableCache !== null) $output->setEnableCache($enableCache);
         if ($renderMaster) {
             return $output->renderMaster($this);
         } else {
@@ -1357,7 +1375,8 @@ class Kwf_Component_Data
      */
     public function kwfSerialize()
     {
-        $this->getLanguage(); //um _languageCache zu befüllen
+        $this->getLanguage(); //fill _languageCache
+        $this->getExpandedComponentId(); //fill _expandedComponentIdCache
 
         $ret = array();
         $ret['class'] = get_class($this);
@@ -1400,7 +1419,7 @@ class Kwf_Component_Data
         unset($vars['class']);
         $vars['unserialized'] = true;
         $ret = new $cls($vars);
-        Kwf_Component_Data_Root::getInstance()->addToDataCache($ret, new Kwf_Component_Select());
+        Kwf_Component_Data_Root::getInstance()->addToDataCache($ret, false);
         //TODO: generator data-cache?
         return $ret;
     }

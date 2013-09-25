@@ -16,6 +16,25 @@ class Kwf_Controller_Action_Cli_ClearCacheController extends Kwf_Controller_Acti
         exit;
     }
 
+    public function memcacheAction()
+    {
+        if (!Kwf_Cache_Simple::$memcacheHost) {
+            echo "memcache not configured for host\n";
+            exit;
+        }
+        $s = Kwf_Cache_Simple::$memcacheHost.':'.Kwf_Cache_Simple::$memcachePort;
+        echo "Clear the complete memcache on $s?\nThis will effect all other webs using this memcache host.\nAre you REALLY sure you want to do that? [N/y]\n";
+        $stdin = fopen('php://stdin', 'r');
+        $input = trim(strtolower(fgets($stdin, 2)));
+        fclose($stdin);
+        if (($input == 'y')) {
+            Kwf_Cache_Simple::getMemcache()->flush();
+            echo "done\n";
+            exit;
+        }
+        exit(1);
+    }
+
     public function writeMaintenanceAction()
     {
         Kwf_Util_Maintenance::writeMaintenanceBootstrapSelf();
@@ -30,11 +49,14 @@ class Kwf_Controller_Action_Cli_ClearCacheController extends Kwf_Controller_Acti
 
     public static function getHelpOptions()
     {
-        $types = Kwf_Util_ClearCache::getInstance()->getTypes();
+        $types = array();
+        foreach (Kwf_Util_ClearCache::getInstance()->getTypes() as $t) {
+            $types[] = $t->getTypeName();
+        }
         return array(
             array(
                 'param'=> 'type',
-                'value'=> $types,
+                'value'=> implode(',', $types),
                 'valueOptional' => true,
                 'help' => 'what to clear'
             )

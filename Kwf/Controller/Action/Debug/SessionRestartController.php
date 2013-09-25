@@ -3,8 +3,8 @@ class Kwf_Controller_Action_Debug_SessionRestartController extends Kwf_Controlle
 {
     public function indexAction()
     {
-        Zend_Session::expireSessionCookie();
-        die('ok');
+        Zend_Session::start();
+        Zend_Session::destroy();
+        Kwf_Util_Redirect::redirect('/');
     }
-
 }

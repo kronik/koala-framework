@@ -14,20 +14,25 @@ class Kwc_Newsletter_Subscribe_Component extends Kwc_Form_Component
         $ret['componentName'] = trlKwfStatic('Newsletter subscribing');
         $ret['placeholder']['submitButton'] = trlKwfStatic('Subscribe the newsletter');
         $ret['subscribeType'] = self::CONFIRM_MAIL_ONLY;
-        $ret['flags']['hasResources'] = true;
 
         $ret['generators']['child']['component']['mail'] = 'Kwc_Newsletter_Subscribe_Mail_Component';
         $ret['generators']['child']['component']['doubleOptIn'] = 'Kwc_Newsletter_Subscribe_DoubleOptIn_Component';
 
         $ret['from'] = ''; // would be good if overwritten
 
+        $ret['menuConfig'] = 'Kwc_Newsletter_Subscribe_MenuConfig';
+
+        $ret['assetsAdmin']['dep'][] = 'KwfAutoGrid';
+        $ret['assetsAdmin']['files'][] = 'kwf/Kwc/Newsletter/Subscribe/RecipientsPanel.js';
+
+        $ret['subscribeToNewsletterClass'] = 'Kwc_Newsletter_Component';
         return $ret;
     }
 
     public function getSubscribeToNewsletterComponent()
     {
         $nlData = Kwf_Component_Data_Root::getInstance()
-            ->getComponentByClass('Kwc_Newsletter_Component', array('subroot'=>$this->getData()));
+            ->getComponentByClass($this->_getSetting('subscribeToNewsletterClass'), array('subroot'=>$this->getData()));
         if (!$nlData) {
             throw new Kwf_Exception('Cannot find newsletter component');
         }

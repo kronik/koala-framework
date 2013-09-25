@@ -13,12 +13,12 @@ class Kwf_Assets_Loader
     {
         if (!isset($_SERVER['REQUEST_URI'])) return;
         require_once 'Kwf/Loader.php';
-        if (substr($_SERVER['REQUEST_URI'], 0, 8)=='/assets/') {
-            $url = substr($_SERVER['REQUEST_URI'], 8);
+        $baseUrl = Kwf_Setup::getBaseUrl();
+        if (substr($_SERVER['REQUEST_URI'], 0, strlen($baseUrl)+8)==$baseUrl.'/assets/') {
+            $url = substr($_SERVER['REQUEST_URI'], strlen($baseUrl)+8);
             if (strpos($url, '?') !== false) {
                 $url = substr($url, 0, strpos($url, '?'));
             }
-
             try {
                 $l = new self();
                 $out = $l->getFileContents($url);
@@ -89,7 +89,7 @@ class Kwf_Assets_Loader
             }
         } else if (substr($file, 0, 4) == 'all/') {
             $encoding = Kwf_Media_Output::getEncoding();
-            $cacheId = md5($file.$encoding.$this->_getHostForCacheId());
+            $cacheId = str_replace(array('/', '.', ':'), '_', $file).'_enc'.$encoding.$this->_getHostForCacheId();
             $cache = Kwf_Assets_Cache::getInstance();
             $cacheData = $cache->load($cacheId);
             if ($cacheData) {
@@ -155,6 +155,10 @@ class Kwf_Assets_Loader
                 } else if ($fileType == 'css' || $fileType == 'printcss') {
                     $cacheData['mimeType'] = 'text/css; charset=utf8';
                 }
+
+                //store list of generated all caches for clear-cache-watcher
+                file_put_contents('cache/assets/generated-all', $cacheId."\n", FILE_APPEND);
+
                 $cache->save($cacheData, $cacheId);
             }
             $ret['mtime'] = time();
@@ -210,9 +214,12 @@ class Kwf_Assets_Loader
                 $cache = Kwf_Assets_Cache::getInstance();
                 $section = substr($file, 0, strpos($file, '-'));
                 if (!$section) $section = 'web';
-                $cacheId = 'fileContents'.$language.$section.$this->_getHostForCacheId().
-                    str_replace(array('/', '\\', '.', '-', ':'), '_', $file).
-                    Kwf_Component_Data_Root::getComponentClass();
+                $cacheId  = 'fileContents'.$section;
+                if (substr($ret['mimeType'], 0, 15) == 'text/javascript') {
+                    //cache javascript per language for trl calls and host for eg. Kwf_Assets_GoogleMapsApiKey
+                    $cacheId .= $language.$this->_getHostForCacheId();
+                }
+                $cacheId .= str_replace(array('/', '\\', '.', '-', ':'), '_', $file);
                 $cacheData = $cache->load($cacheId);
                 if ($cacheData) {
                     if ($cacheData['maxFileMTime'] != $this->getDependencies()->getMaxFileMTime()) {
@@ -252,6 +259,9 @@ class Kwf_Assets_Loader
                         if (substr($cssClass, 0, 11) == 'components/') {
                             $cssClass = substr($cssClass, 11);
                         }
+                        if (substr($cssClass, 0, 7) == 'themes/') {
+                            $cssClass = substr($cssClass, 7);
+                        }
                         if (substr($cssClass, -4) == '.css') {
                             $cssClass = substr($cssClass, 0, -4);
                         }
@@ -263,15 +273,17 @@ class Kwf_Assets_Loader
                         }
                         if (substr($cssClass, -10) == '/Component') {
                             $cssClass = substr($cssClass, 0, -10);
+                        } else if (substr($cssClass, -7) == '/Master') {
+                            $cssClass = substr($cssClass, 0, -7);
+                            $cssClass = 'master'.$cssClass;
+                        } else {
+                            $cssClass = false;
                         }
-                        $cssClass = str_replace('/', '', $cssClass);
-                        $cssClass = strtolower(substr($cssClass, 0, 1)) . substr($cssClass, 1);
-                        $cacheData['contents'] = str_replace('$cssClass', $cssClass, $cacheData['contents']);
-                        $cacheData['contents'] = str_replace('.cssClass', '.'.$cssClass, $cacheData['contents']);
-                        if (Kwf_Config::getValue('assetsCacheUrl')) {
-                            $url = Kwf_Config::getValue('assetsCacheUrl').'?web='.Kwf_Config::getValue('application.id').'&section='.Kwf_Setup::getConfigSection().'&url=';
-                            $cacheData['contents'] = str_replace('url(\'/assets/', 'url(\''.$url.'assets/', $cacheData['contents']);
-                            $cacheData['contents'] = str_replace('url(/assets/', 'url('.$url.'assets/', $cacheData['contents']);
+                        if ($cssClass) {
+                            $cssClass = str_replace('/', '', $cssClass);
+                            $cssClass = strtolower(substr($cssClass, 0, 1)) . substr($cssClass, 1);
+                            $cacheData['contents'] = str_replace('$cssClass', $cssClass, $cacheData['contents']);
+                            $cacheData['contents'] = str_replace('.cssClass', '.'.$cssClass, $cacheData['contents']);
                         }
 
                         if (substr($file, -5)=='.scss') {
@@ -291,6 +303,14 @@ class Kwf_Assets_Loader
                                 $this->_scssParser = new Kwf_Util_SassParser($this->_scssParserOptions);
                             }
                             $cacheData['contents'] = $this->_scssParser->toCss($cacheData['contents'], false);
+                        }
+
+                        if (Kwf_Config::getValue('assetsCacheUrl')) {
+                            $url = Kwf_Config::getValue('assetsCacheUrl').'?web='.Kwf_Config::getValue('application.id').'&section='.Kwf_Setup::getConfigSection().'&url=';
+                            $cacheData['contents'] = str_replace('url(\'/assets/', 'url(\''.$url.'assets/', $cacheData['contents']);
+                            $cacheData['contents'] = str_replace('url(/assets/', 'url('.$url.'assets/', $cacheData['contents']);
+                        } else if ($baseUrl = Kwf_Setup::getBaseUrl()) {
+                            $cacheData['contents'] = preg_replace('#url\\((\s*[\'"]?)/assets/#', 'url($1'.$baseUrl.'/assets/', $cacheData['contents']);
                         }
                     }
 
@@ -313,6 +333,11 @@ class Kwf_Assets_Loader
 
                         $cacheData['contents'] = $this->_getJsLoader()->trlLoad($cacheData['contents'], $language);
                         $cacheData['contents'] = $this->_hlp($cacheData['contents'], $language);
+
+                        if ($baseUrl = Kwf_Setup::getBaseUrl()) {
+                            $cacheData['contents'] = preg_replace('#url\\((\s*[\'"]?)/assets/#', 'url($1'.$baseUrl.'/assets/', $cacheData['contents']);
+                            $cacheData['contents'] = preg_replace('#([\'"])/(kwf|vkwf|admin|assets)/#', '$1'.$baseUrl.'/$2/', $cacheData['contents']);
+                        }
                     }
                     $cache->save($cacheData, $cacheId);
                 }

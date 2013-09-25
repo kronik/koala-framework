@@ -24,6 +24,8 @@ class Kwf_Util_Setup
         require_once 'Kwf/Registry.php';
         Zend_Registry::setClassName('Kwf_Registry');
 
+        error_reporting(E_ALL^E_STRICT);
+
         require_once 'Kwf/Trl.php';
 
         umask(000); //nicht 002 weil wwwrun und kwcms in unterschiedlichen gruppen
@@ -50,25 +52,30 @@ class Kwf_Util_Setup
             'Kwf_Registry',
             'Kwf_Benchmark',
             'Kwf_Loader',
+            'Kwf_Debug',
         );
+        $ret .= "if (!class_exists('Zend_Registry', false)) {\n";
         foreach ($preloadClasses as $cls) {
             foreach ($ip as $path) {
                 $file = $path.'/'.str_replace('_', '/', $cls).'.php';
                 if (file_exists($file)) {
-                    $ret .= "require_once('".$file."');\n";
+                    $ret .= "require('".$file."');\n";
                     break;
                 }
             }
         }
+        $ret .= "}\n";
 
         $ret .= "Kwf_Benchmark::\$startTime = microtime(true);\n";
         $ret .= "\n";
 
         //only replace configured value to avoid spoofing
         //required eg. behind load balancers
-        if (Kwf_Config::getValue('server.replaceVars.remoteAddr')) {
-            $a = Kwf_Config::getValue('server.replaceVars.remoteAddr');
-            $ret .= "\nif (isset(\$_SERVER['$a'])) \$_SERVER['REMOTE_ADDR'] = \$_SERVER['$a'];\n";
+        if (Kwf_Config::getValueArray('server.replaceVars.remoteAddr')) {
+            $a = Kwf_Config::getValueArray('server.replaceVars.remoteAddr');
+            $ret .= "\nif (isset(\$_SERVER['REMOTE_ADDR']) && \$_SERVER['REMOTE_ADDR'] == '$a[if]' && isset(\$_SERVER['$a[replace]'])) {\n";
+            $ret .= "    \$_SERVER['REMOTE_ADDR'] = \$_SERVER['$a[replace]'];\n";
+            $ret .= "}\n";
         }
 
         //try different values, if one spoofs this this is no security issue
@@ -84,18 +91,29 @@ class Kwf_Util_Setup
         $ret .= "\n";
         $ret .= "\n";
         $ret .= "Zend_Registry::setClassName('Kwf_Registry');\n";
+        $ret .= "error_reporting(E_ALL & ~E_STRICT);\n";
+        $ret .= "set_error_handler(array('Kwf_Debug', 'handleError'), E_ALL & ~E_STRICT);\n";
+        $ret .= "set_exception_handler(array('Kwf_Debug', 'handleException'));\n";
+        $ret .= "\n";
+        $ret .= "\$requestUri = isset(\$_SERVER['REQUEST_URI']) ? \$_SERVER['REQUEST_URI'] : null;\n";
+        if (Kwf_Setup::getBaseUrl()) {
+            $ret .= "if (\$requestUri !== null) {\n";
+            $ret .= "    if (substr(\$requestUri, 0, ".strlen(Kwf_Setup::getBaseUrl()).") != '".Kwf_Setup::getBaseUrl()."') {\n";
+            $ret .= "        throw new Exception('Invalid baseUrl');\n";
+            $ret .= "    }\n";
+            $ret .= "    \$requestUri = substr(\$requestUri, ".strlen(Kwf_Setup::getBaseUrl()).");\n";
+            $ret .= "}\n";
+        }
         $ret .= "\n";
         $ret .= "//here to be as fast as possible (and have no session)\n";
-        $ret .= "if (isset(\$_SERVER['REQUEST_URI']) &&\n";
-        $ret .= "    substr(\$_SERVER['REQUEST_URI'], 0, 25) == '/kwf/json-progress-status'\n";
+        $ret .= "if (\$requestUri == '/kwf/json-progress-status'\n";
         $ret .= ") {\n";
         $ret .= "    require_once('Kwf/Util/ProgressBar/DispatchStatus.php');\n";
         $ret .= "    Kwf_Util_ProgressBar_DispatchStatus::dispatch();\n";
         $ret .= "}\n";
         $ret .= "\n";
         $ret .= "//here to have less dependencies\n";
-        $ret .= "if (isset(\$_SERVER['REQUEST_URI']) &&\n";
-        $ret .= "    substr(\$_SERVER['REQUEST_URI'], 0, 17) == '/kwf/check-config'\n";
+        $ret .= "if (\$requestUri == '/kwf/check-config'\n";
         $ret .= ") {\n";
         $ret .= "    require_once('Kwf/Util/Check/Config.php');\n";
         $ret .= "    Kwf_Util_Check_Config::dispatch();\n";
@@ -105,7 +123,7 @@ class Kwf_Util_Setup
         $ret .= "    Kwf_Util_Check_Config::dispatch();\n";
         $ret .= "}\n";
 
-        if (Kwf_Config::getValue('debug.benchmark')) {
+        if (Kwf_Config::getValue('debug.benchmark') || Kwf_Config::getValue('debug.benchmarklog')) {
             //vor registerAutoload aufrufen damit wir dort benchmarken können
             $ret .= "Kwf_Benchmark::enable();\n";
         } else {
@@ -115,7 +133,7 @@ class Kwf_Util_Setup
             }
             $ret .= "}\n";
         }
-        if (Kwf_Config::getValue('debug.benchmarkLog')) {
+        if (Kwf_Config::getValue('debug.benchmarkCounter')) {
             //vor registerAutoload aufrufen damit wir dort benchmarken können
             $ret .= "Kwf_Benchmark::enableLog();\n";
         }
@@ -128,19 +146,20 @@ class Kwf_Util_Setup
         $ret .= "        ini_set('memory_limit', '128M');\n";
         $ret .= "    }\n";
         $ret .= "}\n";
-        $ret .= "error_reporting(E_ALL & ~E_STRICT);\n";
+
         $ret .= "date_default_timezone_set('Europe/Berlin');\n";
+
         if (function_exists('mb_internal_encoding')) {
             $ret .= "mb_internal_encoding('UTF-8');\n";
         }
         if (function_exists('iconv_set_encoding')) {
             $ret .= "iconv_set_encoding('internal_encoding', 'utf-8');\n";
         }
-        $ret .= "set_error_handler(array('Kwf_Debug', 'handleError'), E_ALL & ~E_STRICT);\n";
-        $ret .= "set_exception_handler(array('Kwf_Debug', 'handleException'));\n";
+
         $ret .= "umask(000); //nicht 002 weil wwwrun und kwcms in unterschiedlichen gruppen\n";
 
-        $ret .= "Zend_Registry::set('requestNum', ''.floor(Kwf_Benchmark::\$startTime*100));\n";
+        //this is *NOT* recommended but still works somehow
+        $ret .= "if (get_magic_quotes_gpc()) Kwf_Util_UndoMagicQuotes::undoMagicQuotes();\n";
 
         if (Kwf_Config::getValue('debug.firephp') || Kwf_Config::getValue('debug.querylog')) {
             $ret .= "if (php_sapi_name() != 'cli') {\n";
@@ -150,7 +169,6 @@ class Kwf_Util_Setup
             }
 
             if (Kwf_Config::getValue('debug.querylog')) {
-                $ret .= "    header('X-Kwf-RequestNum: '.Zend_Registry::get('requestNum'));\n";
                 $ret .= "    register_shutdown_function(array('Kwf_Setup', 'shutDown'));\n";
             }
             $ret .= "    ob_start();\n";
@@ -158,51 +176,70 @@ class Kwf_Util_Setup
         }
 
         $preloadClasses = array(
-            'Kwf_Loader',
             'Kwf_Config',
             'Kwf_Cache_Simple',
-            'Kwf_Debug',
             'Kwf_Trl',
         );
+        $preloadClasses[] = 'Kwf_Util_Https';
+        $preloadClasses[] = 'Kwf_Cache_SimpleStatic';
+        $preloadClasses[] = 'Kwf_Util_SessionHandler';
+        $preloadClasses[] = 'Kwf_Util_Memcache';
+        $preloadClasses[] = 'Zend_Session';
+        $preloadClasses[] = 'Kwf_Benchmark_Counter';
+        $preloadClasses[] = 'Kwf_Benchmark_Counter_Apc';
+
         if (Kwf_Component_Data_Root::getComponentClass()) {
             //only load component related classes if it is a component web
-            $preloadClasses[] = 'Kwf_Model_Select';
             $preloadClasses[] = 'Kwf_Component_Data';
             $preloadClasses[] = 'Kwf_Component_Data_Root';
-            $preloadClasses[] = 'Kwf_Component_Select';
-            $preloadClasses[] = 'Kwf_Component_Abstract';
-            $preloadClasses[] = 'Kwc_Abstract';
-            $preloadClasses[] = 'Kwc_Paragraphs_Component';
+            $preloadClasses[] = 'Kwf_Component_Settings';
+
             $preloadClasses[] = 'Kwf_Component_Renderer_Abstract';
             $preloadClasses[] = 'Kwf_Component_Renderer';
             $preloadClasses[] = 'Kwf_Component_Cache';
             $preloadClasses[] = 'Kwf_Component_Cache_Mysql';
-            $preloadClasses[] = 'Kwf_Component_View_Helper_Abstract';
-            $preloadClasses[] = 'Kwf_Component_View_Renderer';
-            $preloadClasses[] = 'Kwf_Component_View_Helper_Master';
-            $preloadClasses[] = 'Kwf_Component_View_Helper_Component';
-            $preloadClasses[] = 'Kwf_Component_View_Helper_ComponentLink';
-            $preloadClasses[] = 'Kwf_View_Helper_Link';
+            $preloadClasses[] = 'Kwf_Component_Cache_Memory';
             $preloadClasses[] = 'Kwf_Component_Abstract_ContentSender_Abstract';
             $preloadClasses[] = 'Kwf_Component_Abstract_ContentSender_Default';
         }
+
+
+        $ret .= "if (!class_exists('Kwf_Config', false)) {\n";
         foreach ($preloadClasses as $cls) {
             foreach ($ip as $path) {
                 $file = $path.'/'.str_replace('_', '/', $cls).'.php';
                 if (file_exists($file)) {
-                    $ret .= "require_once('".$file."');\n";
+                    $ret .= "    require('".$file."');\n";
                     break;
                 }
             }
         }
+        $ret .= "}\n";
+
+        Kwf_Cache_Simple::$backend = null; //unset to re-calculate
+        $ret .= "Kwf_Cache_Simple::\$backend = '".Kwf_Cache_Simple::getBackend()."';\n";
+
+        if (Kwf_Config::getValue('server.memcache.host')) {
+            $host = Kwf_Config::getValue('server.memcache.host');
+            if ($host == '%webserverHostname%') {
+                if (php_sapi_name() == 'cli') {
+                    $host = Kwf_Util_Apc::callUtil('get-hostname', array(), array('returnBody'=>true, 'skipCache'=>true));
+                } else {
+                    $host = php_uname('n');
+                }
+            }
+            $ret .= "Kwf_Cache_Simple::\$memcacheHost = '".$host."';\n";
+            $ret .= "Kwf_Cache_Simple::\$memcachePort = '".Kwf_Config::getValue('server.memcache.port')."';\n";
+        }
+
 
         $ret .= "\$host = isset(\$_SERVER['HTTP_HOST']) ? \$_SERVER['HTTP_HOST'] : null;\n";
 
         $configSection = call_user_func(array(Kwf_Setup::$configClass, 'getDefaultConfigSection'));
         $ret .= "Kwf_Setup::\$configSection = '".$configSection."';\n";
 
-        if (Kwf_Config::getValue('debug.checkBranch')) {
-            $ret .= "if (is_file('kwf_branch') && trim(file_get_contents('kwf_branch')) != Kwf_Config::getValue('application.kwf.version')) {\n";
+        if (Kwf_Config::getValue('debug.checkBranch') && is_file('kwf_branch')) {
+            $ret .= "if (trim(file_get_contents('kwf_branch')) != Kwf_Config::getValue('application.kwf.version')) {\n";
             $ret .= "    \$validCommands = array('shell', 'export', 'copy-to-test');\n";
             $ret .= "    if (php_sapi_name() != 'cli' || !isset(\$_SERVER['argv'][1]) || !in_array(\$_SERVER['argv'][1], \$validCommands)) {\n";
             $ret .= "        \$required = trim(file_get_contents('kwf_branch'));\n";
@@ -212,38 +249,47 @@ class Kwf_Util_Setup
             $ret .= "}\n";
         }
 
+        $ret .= "session_name('SESSION_".Kwf_Config::getValue('application.id')."');\n";
+
+        if (Kwf_Config::getValue('server.https')) {
+            if ($domains = Kwf_Config::getValueArray('server.httpsDomains')) {
+                $ret .= "\$domains = array(";
+                foreach ($domains as $d) {
+                    $ret .= "'".$d."'=>true, ";
+                }
+                $ret .= ");\n";
+                $ret .= "Kwf_Util_Https::\$supportsHttps = isset(\$domains[\$_SERVER['HTTP_HOST']]);";
+            } else {
+                $ret .= "Kwf_Util_Https::\$supportsHttps = true;\n";
+            }
+        } else {
+            $ret .= "Kwf_Util_Https::\$supportsHttps = false;\n";
+        }
+        $ret .= "session_set_cookie_params(\n";
+        $ret .= " 0,";     //lifetime
+        $ret .= " '".Kwf_Setup::getBaseUrl()."/',";   //path
+        $ret .= " null,";  //domain
+        $ret .= " Kwf_Util_Https::\$supportsHttps,"; //secure
+        $ret .= " true";   //httponly
+        $ret .= ");\n";
+
+        $ret .= "\n";
+
         //store session data in memcache if avaliable
-        if ((Kwf_Config::getValue('server.memcache.host') || Kwf_Config::getValue('aws.simpleCacheCluster')) && Kwf_Setup::hasDb()) {
+        if ((Kwf_COnfig::getValue('server.memcache.host') || Kwf_Config::getValue('aws.simpleCacheCluster')) && Kwf_Setup::hasDb()) {
             $ret .= "\nif (php_sapi_name() != 'cli') Kwf_Util_SessionHandler::init();\n";
-        }
-
-        $ret .= "if (isset(\$_POST['PHPSESSID'])) {\n";
-        $ret .= "    //für swfupload\n";
-        $ret .= "    Zend_Session::setId(\$_POST['PHPSESSID']);\n";
-        $ret .= "}\n";
-
-        /*
-        if (isset($_COOKIE['unitTest'])) {
-            //$config->debug->benchmark = false;
-        }
-        */
-
-        if (!Kwf_Config::getValue('server.domain')) {
-            //hack to make clear-cache just work
-            $ret .= "if (\$host) file_put_contents('cache/lastdomain', \$host);\n";
         }
 
         //up here to have less dependencies or broken redirect
         $ret .= "\n";
-        $ret .= "if (isset(\$_SERVER['REQUEST_URI']) &&\n";
-        $ret .= "    substr(\$_SERVER['REQUEST_URI'], 0, 14) == '/kwf/util/apc/'\n";
+        $ret .= "if (substr(\$requestUri, 0, 14) == '/kwf/util/apc/'\n";
         $ret .= ") {\n";
         $ret .= "    Kwf_Util_Apc::dispatchUtils();\n";
         $ret .= "}\n";
 
         // Falls redirectToDomain eingeschalten ist, umleiten
         if (Kwf_Config::getValue('server.redirectToDomain')) {
-            $ret .= "if (\$host) {\n";
+            $ret .= "if (\$host && substr(\$requestUri, 0, 17) != '/kwf/maintenance/' && substr(\$requestUri, 0, 8) != '/assets/') {\n";
             $ret .= "    \$redirect = false;\n";
             if ($domains = Kwf_Config::getValueArray('kwc.domains')) {
                 $ret .= "    \$domainMatches = false;\n";
@@ -302,15 +348,6 @@ class Kwf_Util_Setup
             $ret .= "}\n";
         }
 
-        if (Kwf_Config::getValue('showPlaceholder')) {
-            $ret .= "if (php_sapi_name() != 'cli' && Kwf_Setup::getRequestPath() && substr(Kwf_Setup::getRequestPath(), 0, 8)!='/assets/') {\n";
-            $ret .= "    \$view = new Kwf_View();\n";
-            $ret .= "    echo \$view->render('placeholder.tpl');\n";
-            $ret .= "    exit;\n";
-            $ret .= "}\n";
-        }
-
-
         if (Kwf_Config::getValue('preLogin')) {
             $ret .= "if (php_sapi_name() != 'cli' && Kwf_Setup::getRequestPath()!==false) {\n";
             $ret .= "    \$ignore = false;\n";
@@ -350,11 +387,29 @@ class Kwf_Util_Setup
 
         $locale = Kwf_Trl::getInstance()->trlc('locale', 'C', array(), Kwf_Trl::SOURCE_KWF, Kwf_Trl::getInstance()->getWebCodeLanguage());
         $ret .= "setlocale(LC_ALL, explode(', ', '".$locale."'));\n";
+        /*
+            Das LC_NUMERIC wird absichtlich ausgenommen weil:
+            Wenn locale auf DE gesetzt ist und man aus der DB Kommazahlen
+            ausliest, dann kommen die als string mit Beistrich (,) an und mit
+            dem lässt sich nicht weiter rechnen.
+            PDO oder Zend machen da wohl den Fehler und ändern irgendwo die
+            PHP-Float repräsentation in einen String um und so steht er dann mit
+            Beistrich drin.
+            Beispiel:
+                setlocale(LC_ALL, 'de_DE');
+                $a = 2.3;
+                echo $a; // gibt 2,3 aus
+                echo $a * 2; // gibt 4,6 aus
+            Problem ist es dann, wenn die kommazahl in string gecastet wird:
+                setlocale(LC_ALL, 'de_DE');
+                $a = 2.3;
+                $b = "$a";
+                echo $b; // gibt 2,3 aus
+                echo $b * 2; // gibt 4 aus -> der teil hinterm , wird einfach ignoriert
+        */
         $ret .= "setlocale(LC_NUMERIC, 'C');\n";
 
-        $ret .= "if (isset(\$_SERVER['REQUEST_URI']) &&\n";
-        $ret .= "    (substr(\$_SERVER['REQUEST_URI'], 0, 9) == '/kwf/pma/' || \$_SERVER['REQUEST_URI'] == '/kwf/pma')\n";
-        $ret .= ") {\n";
+        $ret .= "if (substr(\$requestUri, 0, 9) == '/kwf/pma/' || \$requestUri == '/kwf/pma') {\n";
         $ret .= "    Kwf_Util_Pma::dispatch();\n";
         $ret .= "}\n";
 
@@ -366,9 +421,6 @@ class Kwf_Util_Setup
         $ret .= "    }\n";
         $ret .= "    Kwf_Component_Data_Root::setShowInvisible(true);\n";
         $ret .= "}\n";
-
-        $ret .= "Kwf_Benchmark::checkpoint('setUp');\n";
-        $ret .= "\n";
 
         return $ret;
     }

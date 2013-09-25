@@ -293,7 +293,9 @@ class Kwf_Component_Settings
                     //verwendet bei dependencies
                     'css' => array('filename'=>'Component', 'ext'=>'css', 'returnClass'=>false, 'multiple'=>true),
                     'printcss' => array('filename'=>'Component', 'ext'=>'printcss', 'returnClass'=>false, 'multiple'=>true),
-                    'scss' => array('filename'=>'Component', 'ext'=>'scss', 'returnClass'=>false, 'multiple'=>true)
+                    'scss' => array('filename'=>'Component', 'ext'=>'scss', 'returnClass'=>false, 'multiple'=>true),
+                    'masterCss' => array('filename'=>'Master', 'ext'=>'css', 'returnClass'=>false, 'multiple'=>true),
+                    'masterScss' => array('filename'=>'Master', 'ext'=>'scss', 'returnClass'=>false, 'multiple'=>true),
                 ));
             } else {
 
@@ -358,17 +360,18 @@ class Kwf_Component_Settings
                         if (is_array($g['component'])) {
                             foreach ($g['component'] as $l=>$cc) {
                                 if (!$cc) continue;
-                                if (Kwc_Abstract::hasSetting($cc, 'needsParentComponentClass')
-                                    && Kwc_Abstract::getSetting($cc, 'needsParentComponentClass')
-                                ) {
+                                $cc = strpos($cc, '.') ? substr($cc, 0, strpos($cc, '.')) : $cc;
+                                $vars = get_class_vars($cc);
+                                if (isset($vars['needsParentComponentClass']) && $vars['needsParentComponentClass']) {
                                     $g['component'][$l] .= '.'.$class;
                                 }
                             }
                         } else {
                             if (!$g['component']) continue;
-                            if (Kwc_Abstract::hasSetting($g['component'], 'needsParentComponentClass')
-                                && Kwc_Abstract::getSetting($g['component'], 'needsParentComponentClass')
-                            ) {
+                            $cc = $g['component'];
+                            $cc = strpos($cc, '.') ? substr($cc, 0, strpos($cc, '.')) : $cc;
+                            $vars = get_class_vars($cc);
+                            if (isset($vars['needsParentComponentClass']) && $vars['needsParentComponentClass']) {
                                 $g['component'] .= '.'.$class;
                             }
                         }
@@ -551,6 +554,7 @@ class Kwf_Component_Settings
         }
         foreach ($classes as $c) {
             if ($c&& !in_array($c, $componentClasses)) {
+                self::_verifyComponentClass($c);
                 if (!class_exists(strpos($c, '.') ? substr($c, 0, strpos($c, '.')) : $c)) {
                     throw new Kwf_Exception("Component Class '$c' does not exist, used in '$class'");
                 }
