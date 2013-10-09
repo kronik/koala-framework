@@ -290,13 +290,20 @@ abstract class Kwf_Controller_Action_Auto_Form extends Kwf_Controller_Action_Aut
         $this->_progressBar = new Zend_ProgressBar(
             new Kwf_Util_ProgressBar_Adapter_Cache($this->_getParam('progressNum')),
                                                    0, count($this->_fields));
+        $outputXls = $xls;
         
         if ($row && $primaryKey) {
-            $this->_fillTheXlsFile($xls, $sheet);
+            $outputXls = $this->_fillTheXlsFile($xls, $sheet);
         }
         
-        // write the file
-        $objWriter = PHPExcel_IOFactory::createWriter($xls, 'Excel5');
+        if ($outputXls != NULL) {
+            // write the file
+            $objWriter = PHPExcel_IOFactory::createWriter($outputXls, 'Excel5');
+        } else {
+            // write the file
+            $objWriter = PHPExcel_IOFactory::createWriter($xls, 'Excel5');
+        }
+        
         $downloadkey = uniqid();
         $objWriter->save('temp/'.$downloadkey.'.xls');
         
