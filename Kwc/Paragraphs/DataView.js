@@ -25,6 +25,12 @@ Kwc.Paragraphs.DataView = Ext.extend(Ext.DataView, {
             '<div class="x-clear"></div>'
         );
 
+        //buffer callOnContentReady for better performance when changing multiple rows - which happens when
+        //deleting and entry and all below have to be re-numbered
+        this.callOnContentReadyTask = new Ext.util.DelayedTask(function() {
+            Kwf.callOnContentReady(this.el, { newRender: true });
+        }, this);
+
         Kwc.Paragraphs.DataView.superclass.initComponent.call(this);
     },
 
@@ -45,17 +51,17 @@ Kwc.Paragraphs.DataView = Ext.extend(Ext.DataView, {
     },
     updateToolbars: function()
     {
-        Kwf.callOnContentReady(this.el, { newRender: true });
+        this.callOnContentReadyTask.delay(10);
 
         if (!this.showToolbars) return;
-
         var nodes = this.getNodes();
         for (var i=0; i< nodes.length; i++) {
             var node = nodes[i];
-            var tbCt = Ext.get(node).down('.kwc-paragraphs-toolbar');
-            if (tbCt.down('.x-toolbar')) {
+            if (node.hasParagraphsToolbarRendered) {
                 continue;
             }
+            node.hasParagraphsToolbarRendered = true;
+            var tbCt = Ext.get(node).down('.kwc-paragraphs-toolbar');
             var tb = new Ext.Toolbar({
                 renderTo: tbCt
             });

@@ -9,7 +9,12 @@ class Kwf_Controller_Action_User_Users_RoleData extends Kwf_Data_Abstract
         $this->_roles = array();
         foreach($acl->getRoles() as $role) {
             if($role instanceof Kwf_Acl_Role) {
+<<<<<<< HEAD
                 $this->_roles[$role->getRoleId()] = trlKwf($role->getRoleName());
+=======
+                $roleName = Kwf_Trl::getInstance()->trlStaticExecute($role->getRoleName());
+                $this->_roles[$role->getRoleId()] = $roleName;
+>>>>>>> upstream/3.5
             }
         }
     }

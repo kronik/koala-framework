@@ -43,6 +43,9 @@ Kwf.onContentReady(function(readyEl) {
         l.style.onContentReady();
         el.kwfLightbox = l;
         Kwf.EyeCandy.Lightbox.currentOpen = l;
+
+        //callOnContentReady so eg. ResponsiveEl can do it's job based on the new with of the lightbox
+        Kwf.callOnContentReady(l.contentEl.dom, {newRender: false});
     });
 
     readyEl = Ext.get(readyEl);
@@ -166,9 +169,6 @@ Kwf.EyeCandy.Lightbox.Lightbox.prototype = {
                     if (this.lightboxEl.isVisible()) {
                         this.contentEl.fadeIn();
                     }
-                    this._blockOnContentReady = true; //don't resize twice
-                    Kwf.callOnContentReady(this.contentEl.dom, {newRender: true});
-                    this._blockOnContentReady = false;
                     this.style.afterContentShown();
                     if (this.lightboxEl.isVisible()) {
                         this.preloadLinks();
@@ -214,6 +214,8 @@ Kwf.EyeCandy.Lightbox.Lightbox.prototype = {
             Kwf.EyeCandy.Lightbox.currentOpen.close(closeOptions);
         }
         Kwf.EyeCandy.Lightbox.currentOpen = this;
+
+        this.showOptions = options;
 
         this.lightboxEl.addClass('kwfLightboxOpen');
         if (this.fetched) {
@@ -305,6 +307,11 @@ Kwf.EyeCandy.Lightbox.Styles.Abstract.prototype = {
     afterContentShown: Ext.emptyFn,
     updateContent: function(responseText) {
         this.lightbox.contentEl.update(responseText);
+
+        this._blockOnContentReady = true; //don't resize twice
+        //callOnContentReady so eg. ResponsiveEl can do it's job which might change the height of contents
+        Kwf.callOnContentReady(this.lightbox.contentEl.dom, {newRender: true});
+        this._blockOnContentReady = false;
     },
     onShow: Ext.emptyFn,
     afterShow: Ext.emptyFn,
@@ -433,13 +440,11 @@ Kwf.EyeCandy.Lightbox.Styles.CenterBox = Ext.extend(Kwf.EyeCandy.Lightbox.Styles
         var maxSize = this._getMaxContentSize();
         if (newSize.width > maxSize.width) newSize.width = maxSize.width;
 
-        if (newSize.height > maxSize.height) {
-            if (this.lightbox.options.adaptHeight) {
-                newSize.height = maxSize.height;
-            } else {
-                if (!dontDeleteHeight) {
-                    delete newSize.height;
-                }
+        if (this.lightbox.options.adaptHeight && newSize.height > maxSize.height) {
+            newSize.height = maxSize.height;
+        } else {
+            if (!dontDeleteHeight) {
+                delete newSize.height;
             }
         }
 
@@ -452,30 +457,6 @@ Kwf.EyeCandy.Lightbox.Styles.CenterBox = Ext.extend(Kwf.EyeCandy.Lightbox.Styles
         var originalSize = this.lightbox.innerLightboxEl.getSize();
 
         Kwf.EyeCandy.Lightbox.Styles.CenterBox.superclass.updateContent.apply(this, arguments);
-
-        this.lightbox.contentEl.query('img').each(function(imgEl) {
-            var s = Ext.fly(imgEl).getSize();
-            if (s.height == 0 || s.width == 0) {
-                //img tags that set width/height: auto in css don't have size until they are loaded
-                //move the size attribute into inline style with respecting aspect ratio
-                imgEl.style.height = imgEl.getAttribute('height')+'px';
-                if (Ext.fly(imgEl).getHeight() < imgEl.getAttribute('height')) {
-                    var ratio = imgEl.getAttribute('width') / imgEl.getAttribute('height');
-                    imgEl.style.width = (ratio * Ext.fly(imgEl).getHeight())+'px';
-                }
-                imgEl.style.width = imgEl.getAttribute('width')+'px';
-                if (Ext.fly(imgEl).getWidth() < imgEl.getAttribute('width')) {
-                    var ratio = imgEl.getAttribute('height') / imgEl.getAttribute('width');
-                    imgEl.style.height = (ratio * Ext.fly(imgEl).getWidth())+'px';
-                }
-                Ext.fly(imgEl).on('load', function() {
-                    //once the img is loaded remove the style again and let css with: auto do it's work
-                    //required to be able to react to browser window change
-                    this.style.width = '';
-                    this.style.height = '';
-                }, imgEl);
-            }
-        }, this);
 
         if (!this.lightbox.options.height) this.lightbox.innerLightboxEl.dom.style.height = '';
         if (!this.lightbox.options.width) this.lightbox.innerLightboxEl.dom.style.width = '';

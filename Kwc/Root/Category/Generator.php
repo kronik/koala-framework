@@ -62,7 +62,7 @@ class Kwc_Root_Category_Generator extends Kwf_Component_Generator_Abstract
         return $this->_pageDataCache[$id];
     }
 
-    private function _getChildPageIds($parentId, $onlyVisible = false)
+    private function _getChildPageIds($parentId)
     {
         $cacheId = 'pcIds-'.$parentId;
         $ret = Kwf_Cache_Simple::fetch($cacheId);
@@ -83,34 +83,18 @@ class Kwc_Root_Category_Generator extends Kwf_Component_Generator_Abstract
             }
             Kwf_Cache_Simple::add($cacheId, $ret);
         }
-
-        if ($onlyVisible) {
-            foreach ($ret as $k=>$i) {
-                $pd = $this->_getPageData($i);
-                if (!$pd['visible']) unset($ret[$k]);
-            }
-            $ret = array_values($ret);
-        }
         return $ret;
-    }
-
-    /**
-     * Returns all recursive children of a page (only visible ones)
-     */
-    public function getRecursiveVisiblePageChildIds($parentId)
-    {
-        return $this->getRecursivePageChildIds($parentId, true);
     }
 
     /**
      * Returns all recursive children of a page
      */
-    public function getRecursivePageChildIds($parentId, $onlyVisible = false)
+    public function getRecursivePageChildIds($parentId)
     {
         $select = new Kwf_Model_Select();
-        $ret = $this->_getChildPageIds($parentId, $onlyVisible);
+        $ret = $this->_getChildPageIds($parentId);
         foreach ($ret as $i) {
-            $ret = array_merge($ret, $this->getRecursivePageChildIds($i, $onlyVisible));
+            $ret = array_merge($ret, $this->getRecursivePageChildIds($i));
         }
         return $ret;
     }
@@ -505,10 +489,7 @@ class Kwc_Root_Category_Generator extends Kwf_Component_Generator_Abstract
         $sourceRow = $this->getModel()->getRow($childId);
         $newRow = $sourceRow->duplicate($data);
 
-        //force reload to have the new row loaded
-        $this->_pageDataLoaded = false; //TODO do this only once
-
-                                                        //ids are numeric, we don't have to use parentSource/parentTarget
+        //ids are numeric, we don't have to use parentSource/parentTarget
         $source = Kwf_Component_Data_Root::getInstance()->getComponentById($childId, array('ignoreVisible'=>true));
         $target = Kwf_Component_Data_Root::getInstance()->getComponentById($newRow->id, array('ignoreVisible'=>true));
         if (!$target) {

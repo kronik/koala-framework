@@ -34,4 +34,59 @@
 .webStandard .switchContent a:hover {
     color: var(secColor);
 }
-    
+.webStandard.kwcListLinks a {
+    text-decoration: underline;
+}
+.webStandard.kwcCompositeSwitchDisplay a.switchLink {
+    color: var(mainColor);
+    font-size: 20px;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: normal;
+    background: url("/assets/kwf/themes/RedMallee/images/readMoreBg.png") -4px 0 no-repeat;
+}
+.webStandard.kwcCompositeSwitchDisplay a.switchLink.switchLinkOpened {
+    background: url("/assets/kwf/themes/RedMallee/images/readMoreBgDown.png") -4px 0 no-repeat;
+}
+.webStandard.kwcCompositeSwitchDisplay .content.switchContent {
+    background: #f8f8f8;
+}
+body.frontend {
+    .webForm.kwcForm {
+        position: relative;
+        label {
+            font-size: 14px;
+            line-height: 25px;
+            text-align: left;
+        }
+        button {
+            background: none repeat scroll 0 0 grey;
+            border: none;
+            border-right: 1px solid grey;
+            box-shadow: none;
+            color: #FFFFFF;
+            font-size: 18px;
+            padding: 5px 51px;
+        }
+        input,
+        textarea {
+            font-size: 14px;
+            border: 1px solid #333;
+            padding: 6px;
+            margin-bottom: 10px;
+        }
+    }
+    table {
+        tr {
+            td {
+                line-height: 15px;
+                border-bottom: 1px solid #E1DFE0;
+                border-right: 1px solid #E1DFE0;
+                white-space: nowrap;
+                text-align: center;
+                padding: 3px;
+                font-size: 12px;
+            }
+        }
+    }
+}
